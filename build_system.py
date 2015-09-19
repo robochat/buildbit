@@ -80,10 +80,11 @@ def translate(pat):
 
 class Make(object):
     def __init__(self):
-        self.raw_graph={}
+        self.explicit_rules={}
+        self.pattern_rules={}
         self.PHONY=[] # list of phony targets
         
-        self.buildorder=OrderedSet() #recipe for building target.
+        self._buildorder=OrderedSet() #recipe for building target.
         self._uptodate=set() #working variable: rules that have been processed and found up to date
         
     
@@ -112,8 +113,14 @@ class Make(object):
                 if hasattr(self,'func'): self.func(self)
                 
             def expand_wildcards(self,seq):
-                """expands wildcards in the dep names using the glob module"""
-                return itertools.chain(glob.glob(i) for i in seq)
+                """expands wildcards in the dep names using the glob module to
+                search the file system and ??an altered glob module?? to search
+                the explicit rules."""
+                def expand(fpath):
+                    matches = glob.glob(fpath) + myglob(self.explicit_rules.keys())
+                    if len(matches) == 0: raise InputError("No matching file or rule found for %r",fpath)
+                    return dedup(matches)
+                return itertools.chain(*(expand(fpath) for fpath in seq))
             
             @property
             def target(self):
