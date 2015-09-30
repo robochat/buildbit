@@ -407,11 +407,13 @@ class WildSharedRule(MetaRule):
         #check parameters
         
         
-        # Some of the targets may be explicit, in which case we can create the explicitRule now
+        # A single ExplicitRule will shared between all targets.
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
-        self.explicitrule = ExplicitTargetRule(targets=explicit_targets,
+        self.explicitrules = [ExplicitTargetRule(targets=explicit_targets,
                                         reqs=ireqs,order_only=iorder_only,
-                                        func=self.func,PHONY=self.PHONY)
+                                        func=self.func,PHONY=self.PHONY)]
+        #only one rule is defined but we store it in the explicitrules list for
+        #compatibility with the parent object's func getter/setter descriptors.
         
         #Add self to registry of rules
         wild_targest = [target for target in targets if fpmatch.has_magic(target)]
