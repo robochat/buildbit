@@ -8,6 +8,7 @@ import warnings
 import glob
 import itertools
 import inspect
+import functools
 from collections import Iterable
 from types import StringTypes
 from sys import maxint
@@ -353,6 +354,7 @@ class MetaRule(Make):
         self.PHONY = PHONY
         self.allreqs = checkseq(reqs)
         self.order_only = checkseq(order_only)
+        self.func = func
         
         #self.re_targets = [] #must be defined in the child classes.
         
