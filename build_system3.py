@@ -354,9 +354,9 @@ class MetaRule(Make):
         self.PHONY = PHONY
         self.allreqs = checkseq(reqs)
         self.order_only = checkseq(order_only)
-        self.func = func
         
-        #self.re_targets = [] #must be defined in the child classes.
+        self.explicit_rules = [] # definition necessary here for func descripter to work.
+        self._func = func
         
     def individuate(self,target):
         """updates the explicit rule for the target. Will raise InputError
@@ -369,6 +369,16 @@ class MetaRule(Make):
             if pattern.match(target):
                 return True        
         return False
+    
+    @property
+    def func(self):
+        return self._func
+
+    @func.setter
+    def func(self,newfunc):
+        self._func = newfunc
+        for explicit_rule in self.explicit_rules:
+            explicit_rule.func = newfunc
 
 
 ## rules where those with multiple targets are still only run once.
@@ -455,8 +465,6 @@ class WildRule(MetaRule):
             passed this class instance when run in order to have access
             to its attributes.
         """
-        #self._func = func #for descripter to work?
-        self.explicit_rules = [] #necessary for func descripter to work 
         super(WildRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
         #Check parameters
         
@@ -488,24 +496,6 @@ class WildRule(MetaRule):
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
                                 func=self.func,PHONY=self.PHONY)
         return newrule
-
-    @property
-    def func(self):
-        return self._func
-
-    @func.setter
-    def func(self,newfunc):
-        self._func = newfunc
-        for explicit_rule in self.explicit_rules:
-            explicit_rule.func = newfunc
-    
-    #or
-    
-    def __setattr__(self,name,value):
-        if name == 'func': #late-binding of func for WildRule's explicit targets
-            for explicit_rule in self.explicit_rules:
-                explicit_rule.func = newfunc
-        super(WildRule, self).__setattr__(name, value)
 
 
 
