@@ -521,13 +521,17 @@ class PatternRule(MetaRule):
         if the target is incompatible with the metarule"""
         #check target
         
+        #inplace pattern substitution
+        def subst_patterns(s,patterns):
+            for pattern in patterns:
+                s=s.replace('%',pattern,1)
+            return s
         #pattern matching, finding best match
         res =regex.match(target)
         if not res: raise LogicError
         patterns = res.groups()
-        ?? multiple patterns??
-        ireqs = [req.replace('%',pattern) for req in self.allreqs]
-        iorder_only = [req.replace('%',pattern) for req in self.order_only] 
+        ireqs = [subst_patterns(req,patterns) for req in self.allreqs]
+        iorder_only = [subst_patterns(req,patterns) for req in self.order_only]
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
                                 func=self.func,PHONY=self.PHONY)
         newrule.pattern = pattern #useful attribute
