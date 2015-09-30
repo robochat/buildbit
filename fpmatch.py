@@ -83,3 +83,23 @@ magic_check = re.compile('[*?%[]')
 
 def has_magic(s):
     return magic_check.search(s) is not None
+
+def has_pattern(s):
+    """find if glob  has a rule pattern (%) wildcard.
+    """
+    i, n = 0, len(s)
+    res = False
+    while i < n:
+        c = s[i]
+        i = i+1
+        if c == '%':
+            res = True
+        elif c == '[':
+            j = i
+            while j < n and s[j] != ']':
+                j = j+1
+            if j >= n:
+                pass #bracket never closed so treating [ as a literal
+            else:
+                i = j+1
+    return res
