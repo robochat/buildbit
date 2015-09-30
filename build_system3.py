@@ -294,11 +294,6 @@ class ExplicitTargetRule(ExplicitRule):
         matches += fpmatch.filter(req,self.rules.iterkeys())
         if len(matches) == 0: raise InputError("No matching file or rule found for %r",fpath)
         return dedup(matches)
-    
-    def matches(self,req):
-        """Finds all explicit targets that match the req glob pattern"""
-        return ?.filter(req,self.rules.iterkeys())
-        
 
 
 
@@ -391,6 +386,7 @@ class MetaRule(Make):
     def func(self):
         return self._func
 
+    #this allows us to have late binding of the build function to the rule instance
     @func.setter
     def func(self,newfunc):
         self._func = newfunc
