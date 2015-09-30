@@ -498,6 +498,14 @@ class WildRule(MetaRule):
         self._func = newfunc
         for explicit_rule in self.explicit_rules:
             explicit_rule.func = newfunc
+    
+    #or
+    
+    def __setattr__(self,name,value):
+        if name == 'func': #late-binding of func for WildRule's explicit targets
+            for explicit_rule in self.explicit_rules:
+                explicit_rule.func = newfunc
+        super(WildRule, self).__setattr__(name, value)
 
 
 
