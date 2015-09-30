@@ -358,6 +358,18 @@ class MetaRule(Make):
         self.explicit_rules = [] # definition necessary here for func descripter to work.
         self._func = func
         
+        #Add self to registry of rules
+        wild_targets = [target for target in targets if fpmatch.has_magic(target)]
+        self.re_targets = [fpmatch.precompile(pattern) for pattern in wild_targets]
+        for regex in self.re_targets:
+            self.meta_rules[regex] = self
+        
+        #calculate pattern lengths
+        rankings = [len(fpmatch.strip_specials(pattern)) for pattern in wild_targets]
+        for regex,rank in zip(self.re_targets,rankings):
+            self._pattern_rankings[regex] = rank
+        
+        
     def individuate(self,target):
         """updates the explicit rule for the target. Will raise InputError
         if the target is incompatible with the metarule."""
@@ -415,16 +427,7 @@ class WildSharedRule(MetaRule):
         #only one rule is defined but we store it in the explicitrules list for
         #compatibility with the parent object's func getter/setter descriptors.
         
-        #Add self to registry of rules
-        wild_targest = [target for target in targets if fpmatch.has_magic(target)]
-        self.re_targets = [fpmatch.precompile(pattern) for pattern in wild_targets]
-        for regex in self.re_targets:
-            self.meta_rules[regex] = self
-        
-        #calculate pattern lengths
-        rankings = [len(fpmatch.strip_specials(pattern)) for pattern in wild_targets]
-        for regex,rank in zip(self.re_targets,rankings):
-            self._pattern_rankings[regex] = rank
+
         
     def individuate(self,target,regex):
         """updates the explicit rule for the target. Will raise InputError
@@ -478,16 +481,7 @@ class WildRule(MetaRule):
             ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,func=self.func,PHONY=self.PHONY)
             for target in explicit_targets]
 
-        #Add self to registry of rules
-        wild_targest = [target for target in targets if fpmatch.has_magic(target)]
-        self.re_targets = [fpmatch.precompile(pattern) for pattern in wild_targets]
-        for regex in self.re_targets:
-            self.meta_rules[regex] = self
-        
-        #calculate pattern lengths
-        rankings = [len(fpmatch.strip_specials(pattern)) for pattern in wild_targets]
-        for regex,rank in zip(self.re_targets,rankings):
-            self._pattern_rankings[regex] = rank
+
         
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise InputError
@@ -518,15 +512,7 @@ class PatternRule(MetaRule):
         super(PatternRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
         #Check parameters
         
-        #Create registry
-        self.re_targets = [fpmatch.precompile(pattern) for pattern in targets]
-        for regex in self.re_targets:
-            self.meta_rules[regex] = self
-        
-        #calculate pattern lengths
-        rankings = [len(fpmatch.strip_specials(pattern)) for pattern in targets]
-        for regex,rank in zip(self.re_targets,rankings):
-            self._pattern_rankings[regex] = rank
+
         
     
     def individuate(self,target,regex):
