@@ -156,7 +156,7 @@ class ExplicitRule(Make):
         self.reqs = dedup(self.allreqs)
         self.order_only = checkseq(order_only)
         if func: self.func = func
-        self.updated_only = self.updated_only()
+        #self.updated_only = self.updated_only()
         
         #Add self to Make registry
         for target in self.targets:
@@ -261,11 +261,10 @@ class ExplicitTargetRule(ExplicitRule):
         """
         self.targets = checkseq(targets)
         self.PHONY = PHONY
-        self.allreqs = checkseq(reqs)
-        self.reqs = dedup(self.allreqs)
-        self.order_only = checkseq(order_only)
+        self._allreqs = checkseq(reqs)
+        self._order_only = checkseq(order_only)
         if func: self.func = func
-        self.updated_only = self.updated_only()
+        #self.updated_only = self.updated_only()
         
         #Add self to Make registry
         for target in self.targets:
@@ -273,20 +272,26 @@ class ExplicitTargetRule(ExplicitRule):
                 warnings.warn('Make takes the last defined rule for each target. Overwriting the rule for %r' %target)
             self.rules[target] = self
     
-    def expand_wildcards(self,req):
-        """expands any wildcards in the prerequisite. This finds any matches
-        for the files in the build directory and for any explicit rules (but
-        doesn't search the metarules - impossible to create an explicit 
-        prerequisite from a wildcard-wildcard match."""
-        ireqs = itertools.chain(*(self.expand_wildcard(req) for req in ireqs))
-        iorder_only = itertools.chain(*(self.expand_wildcard(req) for req in iorder_only))
-
+    #delay expansion because we can only do it after all of the build rules have been defined
+    
+    @reify
+    def allreqs(self):
+        return itertools.chain(*(self.expand_wildcard(req) for req in self._allreqs))
+    
+    @reify
+    def reqs(self):
+        return dedup(self.allreqs)
+    
+    @reify
+    def order_only(self):
+        return itertools.chain(*(self.expand_wildcard(req) for req in self._order_only))
+    
     def expand_wildcard(self,fpath):        
         """Uses the glob module to search the file system and ??an altered glob module??
         to search the meta rules.
         """
         matches = glob.glob(fpath) 
-        matches += self.matches(fpath)
+        matches += fpmatch.filter(req,self.rules.iterkeys())
         if len(matches) == 0: raise InputError("No matching file or rule found for %r",fpath)
         return dedup(matches)
     
