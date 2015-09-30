@@ -278,13 +278,14 @@ class MetaRule(Make):
         if rule: 
             return rule
         #else search metarules
-        matches = [self.matchlength(target,pattern) for pattern in cls.meta_rules.keys()]
-        matches = [match for match in matches if pattern.match(target)]
+        matches = [regex for regex in cls.meta_rules.keys() if regex.match(target)]
         #choose best
         if len(matches) == 1:
             match = matches[0]
         elif len(matches) > 1:
-            match = self.best_match(target,matches) # find shortest matching pattern (multiple wildcards?, patterns?)
+            # find longest matching pattern (explicit part only) using _pattern_rankings dict
+            i = argmax(self._pattern_rankings[regex] for regex in matches)
+            match = matches[i]
         else:
             match = None
         #create the desired explicit rule
@@ -295,29 +296,6 @@ class MetaRule(Make):
             return newrule
         else:
             return default
-    
-    @staticmethod
-    def matchlength(target,pattern):
-        """looks for a match to the pattern and returns the length of all the groups
-        within the pattern - hence it is a requirement that all of the 'wildcard' parts
-        of the pattern are within a group for counting purposes"""
-        #alternative would be to strip out any special regular expression parts of a pattern
-        #to find the explicit parts of each pattern and then find the longest pattern
-        res = pattern.match(target)
-        if res:
-            stemlength = sum(len(group) for group in res.groups())
-        else:
-            stemlength = maxint
-        return stemlength
-    
-    @staticmethod
-    def best_match(target,matches):
-        """finds the best matched pattern for the target.
-        This assumes that each match regular expression does find a match with the target.
-        It also assumes that each wildcard etc in the re pattern is surrounded by parenthesees.
-        """
-        i = argmin(sum(len(group) for group in pattern.match(target).groups()) for pattern in matches)
-        return matches[i]
     
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """targets - list of targets
@@ -390,7 +368,7 @@ class WildSharedRule(MetaRule):
         for regex,rank in zip(self.re_targets,rankings):
             self._pattern_rankings[regex] = rank
         
-    def individuate(self,target):
+    def individuate(self,target,regex):
         """updates the explicit rule for the target. Will raise InputError
         if the target is incompatible with the metarule"""
         #check target parameter
@@ -452,7 +430,7 @@ class WildRule(MetaRule):
         for regex,rank in zip(self.re_targets,rankings):
             self._pattern_rankings[regex] = rank
         
-    def individuate(self,target):
+    def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise InputError
         if the target is incompatible with the metarule"""
         #check target
@@ -492,13 +470,16 @@ class PatternRule(MetaRule):
             self._pattern_rankings[regex] = rank
         
     
-    def individuate(self,target):
+    def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise InputError
         if the target is incompatible with the metarule"""
         #check target
         
         #pattern matching, finding best match
-        pattern = ?
+        res =regex.match(target)
+        if not res: raise LogicError
+        patterns = res.groups()
+        ?? multiple patterns??
         ireqs = [req.replace('%',pattern) for req in self.allreqs]
         iorder_only = [req.replace('%',pattern) for req in self.order_only] 
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
