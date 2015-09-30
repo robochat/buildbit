@@ -433,7 +433,7 @@ class WildSharedRule(MetaRule):
         
         
         #Adding new target to explicit rule's target attribute.
-        erule = self.explicitrule
+        erule = self.explicitrule[0]
         erule.targets = dedup(erule.targets + [target])
         
         #Nb. We don't add target to the ExplicitRule rule registry since that would make
