@@ -455,16 +455,19 @@ class WildRule(MetaRule):
             passed this class instance when run in order to have access
             to its attributes.
         """
+        #self._func = func #for descripter to work?
+        self.explicit_rules = [] #necessary for func descripter to work 
         super(WildRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
         #Check parameters
         
         
         #Some of the targets may be explicit, in which case we can just directly create ExplicitRules
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
-        for target in explicit_targets:
-            ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
-                                func=self.func,PHONY=self.PHONY)
-        
+        #saving references to explicit rules to allow us to have late-binding of the build func
+        self.explicit_rules = [
+            ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,func=self.func,PHONY=self.PHONY)
+            for target in explicit_targets]
+
         #Add self to registry of rules
         wild_targest = [target for target in targets if fpmatch.has_magic(target)]
         self.re_targets = [fpmatch.precompile(pattern) for pattern in wild_targets]
@@ -486,7 +489,17 @@ class WildRule(MetaRule):
                                 func=self.func,PHONY=self.PHONY)
         return newrule
 
-        
+    @property
+    def func(self):
+        return self._func
+
+    @func.setter
+    def func(self,newfunc):
+        self._func = newfunc
+        for explicit_rule in self.explicit_rules:
+            explicit_rule.func = newfunc
+
+
 
 
 
