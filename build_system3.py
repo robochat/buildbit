@@ -557,6 +557,61 @@ class PatternRule(MetaRule):
 
 
 
+def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
+    """selects the appropriate rule class to use and returns a decorator
+    function if func==None. 
+        targets - single target or sequence of targets
+        reqs - single prerequisite or sequence of prerequisites
+        order_only - single dependency or sequence of order only prerequisites
+        func - the build function that should take one or no arguments. Will be
+            passed this class instance when run in order to have access
+            to its attributes.
+        PHONY - a phony rule always runs irrespective of file modification times
+        shared - shared rules run their build function a single time for all of
+            their targets.
+    targets and reqs may contain glob patterns (see fnmatch and glob modules).
+    They may also contain the '%' wildcard for defining pattern rules (like
+    make).
+    """
+    if shared:
+        if not any(fpmatch.has_magic(target) for target in targets):
+            if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
+                newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
+            else:
+                newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
+        elif has_pattern(targets):
+            raise InputError('shared pattern rule type not written yet')
+        else: #wildcard targets
+            newrule = WildSharedRule(targets,reqs,order_only,func,PHONY)
+    else:
+        if not any(fpmatch.has_magic(target) for target in targets):
+            if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
+                newrules = [ExplicitRule(target,reqs,order_only,func,PHONY) for target in targets] 
+                #or maybe use WildRule??
+            else:
+                newrules = [ExplicitTargetRule(target,reqs,order_only,func,PHONY) for target in targets] 
+                #or maybe use WildRule??
+        elif any(fpmatch.has_pattern(target) for target in targets): 
+            #in fact all targets should have a pattern wildcard but error checking will occur in class.
+            newrule = PatternRule(target,reqs,order_only,func,PHONY)
+        else: #wildcard targets
+            newrule = WildRule(targets,reqs,order_only,func,PHONY)
+    
+    #-------------------
+    if func==None:
+        if newrules:
+            def setfunc(func):
+                for newrule in newrules:
+                    newrule.func = func
+                return func #so that we can have multiple decorators on each function!
+        else:
+            def setfunc(func):
+                newrule.func = func
+                return func #so that we can have multiple decorators on each function!
+
+        return setfunc
+
+    
 
 """
 Questions:
