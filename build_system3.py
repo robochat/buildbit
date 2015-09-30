@@ -85,16 +85,16 @@ class reify(object):
         setattr(inst, self.wrapped.__name__, val)
         return val
 
-@memorize
-get_mtime(fpath):
-    os.path.getmtime(fpath)
+@memoize
+def get_mtime(fpath):
+    return os.path.getmtime(fpath)
     
 class Make(object):
     """Acts as a base class and contains the get() method for finding the best match
     for a target/req from the child classes."""
-    searchorder = [ExplicitRule,WildSharedRule,WildRule,PatternRule] #custom child classes should add themselves to this list
+    searchorder = [] #[ExplicitRule,WildSharedRule,WildRule,PatternRule] #custom child classes should add themselves to this list
                 
-    @class_method
+    @classmethod
     def get(cls,target,default=None):
         """Searches for rule with matching target. Pattern matching is performed 
         and the best match is returned. So target must be explicit. If the target
@@ -106,7 +106,7 @@ class Make(object):
         return rule 
         #InputError("No target found for %r" %target)
                 
-    @class_method
+    @classmethod
     def calc_build_order(cls,target):
         """calculate the build order to get system up to date"""    
         toprule = cls.get(target)
@@ -137,7 +137,7 @@ class ExplicitRule(Make):
     """
     rules = {} #target:rule dict
     
-    @class_method
+    @classmethod
     def get(cls,target,default=None):
         """Find any explicit rules for the given target."""
         return cls.rules.get(target,default)
@@ -314,7 +314,7 @@ class MetaRule(Make):
     #_instantiated_rules = {} # cache of instantiated explicit rules
     #_pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
     
-    @class_method
+    @classmethod
     def get(cls,target,default=None):
         """get the best matched rule for the target from the registry of metarules
         """
@@ -540,6 +540,12 @@ class PatternRule(MetaRule):
 
 
 
+## Adding children classes to Make searchlist
+
+Make.searchorder = [ExplicitRule,WildSharedRule,WildRule,PatternRule]
+
+
+
 def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
     """selects the appropriate rule class to use and returns a decorator
     function if func==None. 
@@ -606,3 +612,4 @@ If MetaRule and ExplicitRule were never called directly, Build could be a normal
 their initialisation routines. Then could have multiple copies of Build (but why?)
 
 Should I have a separate decorate function/class or should I add it to one of the classes? or both of the classes
+"""
