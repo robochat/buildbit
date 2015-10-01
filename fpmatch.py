@@ -1,7 +1,6 @@
 import re
 import os.path
-
-from fnmatch import *
+import imp
 
 def translate(pat):
     """Translate a shell PATTERN to a regular expression.
@@ -41,6 +40,14 @@ def translate(pat):
         else:
             res = res + re.escape(c)
     return res + '\Z(?ms)'
+
+
+# Bring in fnmatches other functions
+_fpmatch = imp.load_module('_fpmatch', *imp.find_module('fnmatch'))
+_fpmatch.translate = translate #monkey patch!
+from _fpmatch import *
+
+
 
 def precompile(pat):
     """pre-compile the glob pattern into a compiled regular expression"""
