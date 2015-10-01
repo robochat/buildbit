@@ -550,6 +550,8 @@ class PatternRule(MetaRule):
 Make.searchorder = [ExplicitRule,WildSharedRule,WildRule,PatternRule]
 
 
+## build system function decorator (user interface)
+##-----------------------------------------------------------------------------------------
 
 def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
     """selects the appropriate rule class to use and returns a decorator
@@ -605,7 +607,17 @@ def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
 
         return setfunc
 
-    
+
+## test stuff
+##-----------------------------------------------------------------------------------------
+
+
+def reset_cache():
+    """resets the memoize caches"""
+    for obj in [get_mtime,ExplicitRule._oldest_target, ExplicitRule.updated_only,
+                ExplicitTargetRule.allreqs, ExplicitTargetRule.reqs, ExplicitTargetRule.order_only]:
+        if hasattr(obj,'cache'):
+            obj.cache = {}
 
 """
 Questions:
