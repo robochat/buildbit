@@ -18,7 +18,7 @@ import fpmatch
 def checksingleinput(val):
     """checks that input is not a sequence"""
     if isinstance(val,StringTypes): pass
-    elif isinstance(val,Iterable): raise InputError("input should not be a sequence: %r" %val)
+    elif isinstance(val,Iterable): raise AssertionError("input should not be a sequence: %r" %val)
     return val
 
 def checkseq(val):
@@ -85,6 +85,11 @@ class reify(object):
         setattr(inst, self.wrapped.__name__, val)
         return val
 
+
+cached_property = reify # very cool and efficient but can't reset
+#cached_property = property # not strictly correct as dependency expansions shouldn't change during a build.
+#cached_property =  #can be reset by doing obj.cache={} (see function reset_cache())
+
 @memoize
 def get_mtime(fpath):
     return os.path.getmtime(fpath)
@@ -99,12 +104,12 @@ class Make(object):
         """Searches for rule with matching target. Pattern matching is performed 
         and the best match is returned. So target must be explicit. If the target
         rule is not found, returns default."""
-        for cls in cls.children:
+        for cls in cls.searchorder:
             rule = cls.get(target,default)
             if rule != default:
                 break
         return rule 
-        #InputError("No target found for %r" %target)
+        #AssertionError("No target found for %r" %target)
                 
     @classmethod
     def calc_build_order(cls,target):
@@ -116,10 +121,12 @@ class Make(object):
     def build(self):
         raise NotImplementedError
         
-    def calc_build_order(self):
+    def calc_build(self):
         raise NotImplementedError
 
-
+    def build(self,buildorder):
+        for task in buildorder:
+            task.build()
 
 # Explicit/Shared rules
 #-------------------------------------------------------------------------------
@@ -142,7 +149,7 @@ class ExplicitRule(Make):
         """Find any explicit rules for the given target."""
         return cls.rules.get(target,default)
     
-    def __init__(targets,reqs,order_only=None,func=None,PHONY=False):
+    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """targets - list of targets
         reqs - seq of prerequisites
         order_only - seq of order only prerequisites
@@ -174,23 +181,22 @@ class ExplicitRule(Make):
             elif len(func_args)==0:
                 self.func()
             else:
-                raise LogicError("Unable to use a rule function that takes more than one argument. rule: %r" %self.targets)
+                raise AssertionError("Unable to use a rule function that takes more than one argument. rule: %r" %self.targets)
     
-    #@reify
-    @memoize
+    @cached_property
     def _oldest_target(self):
         exists = os.path.exists
         ancient_epoch = 0 #unix time
         return min((get_mtime(target) if exists(target) else ancient_epoch) for target in self.targets )
     
-    #@reify
-    @memoize
+    @cached_property
     def updated_only(self):
         """makes a list of the reqs which are newer than any of the targets"""
         oldest_target = self._oldest_target
         updated_reqs = [req for req in self.reqs if get_mtime(req) > oldest_target]
         return updated_reqs
-     
+    
+    #@memoize 
     def calc_build(self):
         """decides if it needs to be built by recursively asking it's prerequisites
         the same question"""
@@ -199,6 +205,7 @@ class ExplicitRule(Make):
         #unless we change to a shared (global) buildseq + _already_seen set, or pass those structures into
         #the calc_build method call.
         #i.e. if (self in buildseq) or (self in _already_seen): return buildseq
+        #Or we can memoize this method
         
         buildseq = OrderedSet()
         
@@ -206,19 +213,19 @@ class ExplicitRule(Make):
             if not os.path.exists(req):
                 reqrule = Make.get(req,None) #super(ExplicitRule,self).get(req,None)
                 if reqrule:
-                    buildseq.add(reqrule.calc_build())
+                    buildseq.update(reqrule.calc_build())
                 else:
                     warnings.warn('Make rule for %r has an order_only prerequisite with no rule' %self.targets)
         
         for req in self.reqs:
             reqrule = Make.get(req,None) #super(ExplicitRule,self).get(req,None)
             if reqrule:
-                buildseq.add(reqrule.calc_build())
+                buildseq.update(reqrule.calc_build())
             else: #perform checks
                 try:
                     get_mtime(req) #use get_mtime to reduce number of file accesses
                 except OSError as e:
-                    raise InputError("No rule or file found for %r for targets: %r" %(req,self.targets))
+                    raise AssertionError("No rule or file found for %r for targets: %r" %(req,self.targets))
             
         if len(buildseq)==0:
             if self.PHONY or any([not os.path.exists(target) for target in self.targets]):
@@ -238,13 +245,14 @@ class ExplicitRule(Make):
                             break
                             
                     except OSError as e: 
-                        raise LogicError("A non file prerequisite was found (%r) for targets %r in wrong code path" %(req,self.targets))
+                        raise AssertionError("A non file prerequisite was found (%r) for targets %r in wrong code path" %(req,self.targets))
         else:
             buildseq.add(self)
         
         return buildseq
 
-
+    def __repr__(self):
+        return '<%r targets:%r>' %(self.__class__.__name__,self.targets)
 
 
 class ExplicitTargetRule(ExplicitRule):
@@ -253,7 +261,7 @@ class ExplicitTargetRule(ExplicitRule):
     
     #rules = {} #shares ExplicitRule's rules datastructure
     
-    def __init__(targets,reqs,order_only=None,func=None,PHONY=False):
+    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """targets - list of targets
         reqs - seq of prerequisites
         order_only - seq of order only prerequisites
@@ -276,28 +284,26 @@ class ExplicitTargetRule(ExplicitRule):
     
     #delay expansion because we can only do it after all of the build rules have been defined
     
-    #@reify
-    @memoize
+    @cached_property
     def allreqs(self):
-        return itertools.chain(*(self.expand_wildcard(req) for req in self._allreqs))
+        return [itertools.chain(*[self.expand_wildcard(req) for req in self._allreqs])]
     
-    #@reify
-    @memoize
+    @cached_property
     def reqs(self):
         return dedup(self.allreqs)
     
-    #@reify
-    @memoize
+    @cached_property
     def order_only(self):
-        return itertools.chain(*(self.expand_wildcard(req) for req in self._order_only))
+        return [itertools.chain(*[self.expand_wildcard(req) for req in self._order_only])]
     
+    @classmethod
     def expand_wildcard(self,fpath):        
         """Uses the glob module to search the file system and ??an altered glob module??
         to search the meta rules.
         """
         matches = glob.glob(fpath) 
-        matches += fpmatch.filter(req,self.rules.iterkeys())
-        if len(matches) == 0: raise InputError("No matching file or rule found for %r",fpath)
+        matches += fpmatch.filter(self.rules.iterkeys(),fpath)
+        if len(matches) == 0: raise AssertionError("No matching file or rule found for %r" %fpath)
         return dedup(matches)
 
 
@@ -314,7 +320,7 @@ class MetaRule(Make):
     build order, instead MetaRules generate Explicit rules (which are then added to the
     build order). 
     """
-    # define these in each subclass.
+    # define these in each subclass. - Doing it this way allows us to define the search order hierarchy.
     #meta_rules = {} # compiled regular expression of target: meta_rule
     #_instantiated_rules = {} # cache of instantiated explicit rules
     #_pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
@@ -341,7 +347,7 @@ class MetaRule(Make):
         #create the desired explicit rule
         if match:
             metarule = cls.meta_rules[match]
-            newrule = metarule.individuate(target)
+            newrule = metarule.individuate(target,match)
             cls._instantiated_rules[target] = newrule #cache the individuated rule
             return newrule
         else:
@@ -360,7 +366,7 @@ class MetaRule(Make):
         self.allreqs = checkseq(reqs)
         self.order_only = checkseq(order_only)
         
-        self.explicit_rules = [] # definition necessary here for func descripter to work.
+        self.explicit_rules = [] #each meta_rule remembers its explicit rules. # definition necessary here for func descripter to work.
         self._func = func
         
         #Add self to registry of rules
@@ -375,8 +381,8 @@ class MetaRule(Make):
             self._pattern_rankings[regex] = rank
         
         
-    def individuate(self,target):
-        """updates the explicit rule for the target. Will raise InputError
+    def individuate(self,target,regex):
+        """updates the explicit rule for the target. Will raise Error
         if the target is incompatible with the metarule."""
         raise NotImplementedError
         
@@ -436,7 +442,7 @@ class WildSharedRule(MetaRule):
 
         
     def individuate(self,target,regex):
-        """updates the explicit rule for the target. Will raise InputError
+        """updates the explicit rule for the target. Will raise an Error
         if the target is incompatible with the metarule"""
         #check target parameter
         
@@ -490,7 +496,7 @@ class WildRule(MetaRule):
 
         
     def individuate(self,target,regex):
-        """creates an explicit rule for the target. Will raise InputError
+        """creates an explicit rule for the target. Will raise an error
         if the target is incompatible with the metarule"""
         #check target
         
@@ -522,7 +528,7 @@ class PatternRule(MetaRule):
         
     
     def individuate(self,target,regex):
-        """creates an explicit rule for the target. Will raise InputError
+        """creates an explicit rule for the target. Will raise an error
         if the target is incompatible with the metarule"""
         #check target
         
@@ -533,13 +539,13 @@ class PatternRule(MetaRule):
             return s
         #pattern matching, finding best match
         res =regex.match(target)
-        if not res: raise LogicError
+        if not res: raise AssertionError
         patterns = res.groups()
         ireqs = [subst_patterns(req,patterns) for req in self.allreqs]
         iorder_only = [subst_patterns(req,patterns) for req in self.order_only]
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
                                 func=self.func,PHONY=self.PHONY)
-        newrule.pattern = pattern #useful attribute
+        newrule.patterns = patterns #useful attribute
         return newrule
 
 
@@ -569,6 +575,11 @@ def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
     They may also contain the '%' wildcard for defining pattern rules (like
     make).
     """
+    targets = checkseq(targets)
+    reqs = checkseq(reqs)
+    order_only = checkseq(order_only)
+
+    newrules = None
     if shared:
         if not any(fpmatch.has_magic(target) for target in targets):
             if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
@@ -576,7 +587,7 @@ def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
             else:
                 newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
         elif has_pattern(targets):
-            raise InputError('shared pattern rule type not written yet')
+            raise AssertionError('shared pattern rule type not written yet')
         else: #wildcard targets
             newrule = WildSharedRule(targets,reqs,order_only,func,PHONY)
     else:
@@ -589,7 +600,7 @@ def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
                 #or maybe use WildRule??
         elif any(fpmatch.has_pattern(target) for target in targets): 
             #in fact all targets should have a pattern wildcard but error checking will occur in class.
-            newrule = PatternRule(target,reqs,order_only,func,PHONY)
+            newrule = PatternRule(targets,reqs,order_only,func,PHONY)
         else: #wildcard targets
             newrule = WildRule(targets,reqs,order_only,func,PHONY)
     
@@ -608,16 +619,15 @@ def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
         return setfunc
 
 
-## test stuff
-##-----------------------------------------------------------------------------------------
-
-
 def reset_cache():
-    """resets the memoize caches"""
-    for obj in [get_mtime,ExplicitRule._oldest_target, ExplicitRule.updated_only,
+    """resets the memoize/cached_property/instantiated_rules caches"""
+    for obj in [get_mtime,
+                ExplicitRule._oldest_target, ExplicitRule.updated_only,ExplicitRule.calc_build_order,
                 ExplicitTargetRule.allreqs, ExplicitTargetRule.reqs, ExplicitTargetRule.order_only]:
         if hasattr(obj,'cache'):
             obj.cache = {}
+    for cls in WildSharedRule, WildRule, PatternRule:
+        cls._instantiated_rules = {}
 
 """
 Questions:
@@ -629,4 +639,7 @@ If MetaRule and ExplicitRule were never called directly, Build could be a normal
 their initialisation routines. Then could have multiple copies of Build (but why?)
 
 Should I have a separate decorate function/class or should I add it to one of the classes? or both of the classes
+
+Q. Exclude targets from dependency search to avoid circular dependencies....
+Q. replace memoize with cached property in appropriate cases.
 """
