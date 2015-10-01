@@ -286,7 +286,7 @@ class ExplicitTargetRule(ExplicitRule):
     
     @cached_property
     def allreqs(self):
-        return [itertools.chain(*[self.expand_wildcard(req) for req in self._allreqs])]
+        return list(itertools.chain(*[self.expand_wildcard(req) for req in self._allreqs]))
     
     @cached_property
     def reqs(self):
@@ -294,7 +294,7 @@ class ExplicitTargetRule(ExplicitRule):
     
     @cached_property
     def order_only(self):
-        return [itertools.chain(*[self.expand_wildcard(req) for req in self._order_only])]
+        return list(itertools.chain(*[self.expand_wildcard(req) for req in self._order_only]))
     
     @classmethod
     def expand_wildcard(self,fpath):        
