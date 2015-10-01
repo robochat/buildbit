@@ -176,19 +176,21 @@ class ExplicitRule(Make):
             else:
                 raise LogicError("Unable to use a rule function that takes more than one argument. rule: %r" %self.targets)
     
-    @reify
+    #@reify
+    @memoize
     def _oldest_target(self):
         exists = os.path.exists
         ancient_epoch = 0 #unix time
         return min((get_mtime(target) if exists(target) else ancient_epoch) for target in self.targets )
     
-    @reify
+    #@reify
+    @memoize
     def updated_only(self):
         """makes a list of the reqs which are newer than any of the targets"""
         oldest_target = self._oldest_target
         updated_reqs = [req for req in self.reqs if get_mtime(req) > oldest_target]
         return updated_reqs
-        
+     
     def calc_build(self):
         """decides if it needs to be built by recursively asking it's prerequisites
         the same question"""
@@ -274,15 +276,18 @@ class ExplicitTargetRule(ExplicitRule):
     
     #delay expansion because we can only do it after all of the build rules have been defined
     
-    @reify
+    #@reify
+    @memoize
     def allreqs(self):
         return itertools.chain(*(self.expand_wildcard(req) for req in self._allreqs))
     
-    @reify
+    #@reify
+    @memoize
     def reqs(self):
         return dedup(self.allreqs)
     
-    @reify
+    #@reify
+    @memoize
     def order_only(self):
         return itertools.chain(*(self.expand_wildcard(req) for req in self._order_only))
     
