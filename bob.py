@@ -44,6 +44,15 @@ class Make(object):
         toprule = cls.get(target)
         build_order = toprule.calc_build()
         return build_order
+    
+    @classmethod
+    def reset_cache(cls):
+        """resets the memoize/cached_property/instantiated_rules caches"""
+        for obj in self.searchorder:
+            if hasattr(obj,reset_cache):
+                obj.reset_cache()
+        #reset get_mtime
+        get_mtime.cache = {}
 
     def build(self):
         raise NotImplementedError
@@ -75,6 +84,12 @@ class ExplicitRule(Make):
     def get(cls,target,default=None):
         """Find any explicit rules for the given target."""
         return cls.rules.get(target,default)
+    
+    @classmethod
+    def reset_cache(cls):
+        for method in cls._oldest_target, cls.updated_only:
+            method.reset_cache()
+        #cls.calc_build.cache = {}
     
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """targets - list of targets
@@ -188,7 +203,11 @@ class ExplicitTargetRule(ExplicitRule):
     """
     rules = {}
     
-    #rules = {} #shares ExplicitRule's rules datastructure
+    @classmethod
+    def reset_cache(cls):
+        ExplicitRule.reset_cache()
+        for method in cls.allreqs, cls.reqs, cls.order_only:
+            method.reset_cache()
     
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """targets - list of targets
@@ -236,13 +255,12 @@ class ExplicitTargetRule(ExplicitRule):
         return dedup(matches)
 
 
-
-
 # Meta/Pattern rules
 #-------------------------------------------------------------------------------
 
 class MetaRule(Make):
-    """The base class for rules that contain wildcards or patterns in their targets
+    """The base class for rules that contain wildcards or patterns in their targets.
+    This shouldn't be used directly.
     
     I have resisted the impulse to make MetaRule a descendent of ExplicitRule since it
     performs a different role. MetaRules should never be directly included in the
@@ -295,7 +313,7 @@ class MetaRule(Make):
         self.allreqs = checkseq(reqs)
         self.order_only = checkseq(order_only)
         
-        self.explicit_rules = [] #each meta_rule remembers its explicit rules. # definition necessary here for func descripter to work.
+        self.explicit_rules = [] #each meta_rule remembers its explicit rules. 
         self._func = func
         
         #Add self to registry of rules
@@ -347,7 +365,11 @@ class WildSharedRule(MetaRule):
     meta_rules = {} # compiled regular expression of target: meta_rule
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
-        
+    
+    @classmethod
+    def reset_cache(cls):
+        cls._instantiated_rules = {}
+    
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """targets - list of targets
         reqs - seq of prerequisites
@@ -358,7 +380,7 @@ class WildSharedRule(MetaRule):
         """
         super(WildSharedRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
         #check parameters
-        
+        pass
         
         # A single ExplicitRule will shared between all targets.
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
@@ -367,9 +389,7 @@ class WildSharedRule(MetaRule):
                                         func=self.func,PHONY=self.PHONY)]
         #only one rule is defined but we store it in the explicitrules list for
         #compatibility with the parent object's func getter/setter descriptors.
-        
-
-        
+    
     def individuate(self,target,regex):
         """updates the explicit rule for the target. Will raise an Error
         if the target is incompatible with the metarule"""
@@ -391,7 +411,6 @@ class WildSharedRule(MetaRule):
 
 
 
-
 ## rules for which those with multiple targets are shorthand for multiple individual rules.
 ##-----------------------------------------------------------------------------------------
 
@@ -402,7 +421,11 @@ class WildRule(MetaRule):
     meta_rules = {} # compiled regular expression of target: meta_rule
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
-        
+    
+    @classmethod
+    def reset_cache(cls):
+        cls._instantiated_rules = {}
+    
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """targets - list of targets
         reqs - seq of prerequisites
@@ -413,7 +436,7 @@ class WildRule(MetaRule):
         """
         super(WildRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
         #Check parameters
-        
+        pass
         
         #Some of the targets may be explicit, in which case we can just directly create ExplicitRules
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
@@ -421,9 +444,7 @@ class WildRule(MetaRule):
         self.explicit_rules = [
             ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,func=self.func,PHONY=self.PHONY)
             for target in explicit_targets]
-
-
-        
+    
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
         if the target is incompatible with the metarule"""
@@ -436,8 +457,6 @@ class WildRule(MetaRule):
 
 
 
-
-
 class PatternRule(MetaRule):
     """A meta rule that can specialise to an explicit rule. It takes wildcards and
     patterns in the target and req lists. Multiple targets lead to individualised
@@ -446,15 +465,17 @@ class PatternRule(MetaRule):
     meta_rules = {}
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
+
+    @classmethod
+    def reset_cache(cls):
+        cls._instantiated_rules = {}
     
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """Note: All targets must have at least the same number of % wildcards as the prerequisite
         with the highest number of them."""
         super(PatternRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
         #Check parameters
-        
-
-        
+        pass
     
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
@@ -476,7 +497,6 @@ class PatternRule(MetaRule):
                                 func=self.func,PHONY=self.PHONY)
         newrule.patterns = patterns #useful attribute
         return newrule
-
 
 
 
@@ -547,16 +567,6 @@ def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
 
         return setfunc
 
-
-def reset_cache():
-    """resets the memoize/cached_property/instantiated_rules caches"""
-    for obj in [get_mtime,
-                ExplicitRule._oldest_target, ExplicitRule.updated_only,ExplicitRule.calc_build_order,
-                ExplicitTargetRule.allreqs, ExplicitTargetRule.reqs, ExplicitTargetRule.order_only]:
-        if hasattr(obj,'cache'):
-            obj.cache = {}
-    for cls in WildSharedRule, WildRule, PatternRule:
-        cls._instantiated_rules = {}
 
 """
 Questions:
