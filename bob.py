@@ -22,48 +22,30 @@ class BaseRule(object):
     """Acts as a base class and contains the cached get_mtime method for getting
     a file's modification time."""
     
-class Make(object):
-    """Acts as a base class and contains the get() method for finding the best match
-    for a target/req from the child classes."""
-    searchorder = [] #[ExplicitRule,WildSharedRule,WildRule,PatternRule] #custom child classes should add themselves to this list
-                
     @classmethod
-    def get(cls,target,default=None):
-        """Searches for rule with matching target. Pattern matching is performed 
-        and the best match is returned. So target must be explicit. If the target
-        rule is not found, returns default."""
-        for cls in cls.searchorder:
-            rule = cls.get(target,default)
-            if rule != default:
-                break
-        return rule 
-        #AssertionError("No target found for %r" %target)
-                
-    @classmethod
-    def calc_build_order(cls,target):
-        """calculate the build order to get system up to date"""    
-        toprule = cls.get(target)
-        build_order = toprule.calc_build()
-        return build_order
+    def get(self):
+        raise NotImplementedError
     
     @classmethod
     def reset_cache(cls):
-        """resets the memoize/cached_property/instantiated_rules caches"""
-        for obj in self.searchorder:
-            if hasattr(obj,reset_cache):
-                obj.reset_cache()
-        #reset get_mtime
-        get_mtime.cache = {}
-
+        self.get_mtime.cache = {}
+    
+    def __call__(self,func):
+        """a rule instance can be used as a decorator on the build recipe function.
+        returns the function unchanged (so that it can be decorated by multiple rules"""
+        self.func = func
+        return func
+    
     def build(self):
         raise NotImplementedError
         
     def calc_build(self):
         raise NotImplementedError
-
-    def build(self,buildorder):
-        for task in buildorder:
-            task.build()
+    
+    @staticmethod
+    @memoize
+    def get_mtime(fpath):
+        return os.path.getmtime(fpath)
 
 # Explicit/Shared rules
 #-------------------------------------------------------------------------------
@@ -71,7 +53,7 @@ class Make(object):
 ## rules where those with multiple targets are still only run once.
 ##------------------------------------------------------------------------------
 
-class ExplicitRule(Make):
+class ExplicitRule(BaseRule):
     """A multiple target, multiple prerequisite rule that will only run
     once no matter how many of the specified targets are required. There
     shouldn't be any wildcards in the targets and reqs lists. reqs can
@@ -108,10 +90,10 @@ class ExplicitRule(Make):
         if func: self.func = func
         #self.updated_only = self.updated_only()
         
-        #Add self to Make registry
+        #Add self to class level registry
         for target in self.targets:
             if target in self.rules:
-                warnings.warn('Make takes the last defined rule for each target. Overwriting the rule for %r' %target)
+                warnings.warn('ExplicitRule takes the last defined rule for each target. Overwriting the rule for %r' %target)
             self.rules[target] = self
     
     def build(self):
@@ -130,13 +112,13 @@ class ExplicitRule(Make):
     def _oldest_target(self):
         exists = os.path.exists
         ancient_epoch = 0 #unix time
-        return min((get_mtime(target) if exists(target) else ancient_epoch) for target in self.targets )
+        return min((self.get_mtime(target) if exists(target) else ancient_epoch) for target in self.targets )
     
     @cached_property
     def updated_only(self):
         """makes a list of the reqs which are newer than any of the targets"""
         oldest_target = self._oldest_target
-        updated_reqs = [req for req in self.reqs if not os.path.exists(req) or get_mtime(req) > oldest_target]
+        updated_reqs = [req for req in self.reqs if not os.path.exists(req) or self.get_mtime(req) > oldest_target]
         return updated_reqs
     
     #@memoize 
@@ -157,19 +139,19 @@ class ExplicitRule(Make):
         
         for req in self.order_only:
             if not os.path.exists(req):
-                reqrule = Make.get(req,None) #super(ExplicitRule,self).get(req,None)
+                reqrule = Rule.get(req,None) #super(ExplicitRule,self).get(req,None)
                 if reqrule:
                     buildseq.update(reqrule.calc_build())
                 else:
-                    warnings.warn('Make rule for %r has an order_only prerequisite with no rule' %self.targets)
+                    warnings.warn('Rule rule for %r has an order_only prerequisite with no rule' %self.targets)
         
         for req in self.reqs:
-            reqrule = Make.get(req,None) #super(ExplicitRule,self).get(req,None)
+            reqrule = Rule.get(req,None) #super(ExplicitRule,self).get(req,None)
             if reqrule:
                 buildseq.update(reqrule.calc_build())
             else: #perform checks
                 try:
-                    get_mtime(req) #use get_mtime to reduce number of file accesses
+                    self.get_mtime(req) #get_mtime is cached to reduce number of file accesses
                 except OSError as e:
                     raise AssertionError("No rule or file found for %r for targets: %r" %(req,self.targets))
             
@@ -185,7 +167,7 @@ class ExplicitRule(Make):
                 #file.
                 for req in self.reqs:
                     try: 
-                        req_mtime = get_mtime(req)
+                        req_mtime = self.get_mtime(req)
                         if req_mtime > oldest_target:
                             buildseq.add(self)
                             break
@@ -228,10 +210,10 @@ class ExplicitTargetRule(ExplicitRule):
         if func: self.func = func
         #self.updated_only = self.updated_only()
         
-        #Add self to Make registry
+        #Add self to class level registry
         for target in self.targets:
             if target in self.rules:
-                warnings.warn('Make takes the last defined rule for each target. Overwriting the rule for %r' %target)
+                warnings.warn('ExplicitTargetRule takes the last defined rule for each target. Overwriting the rule for %r' %target)
             self.rules[target] = self
     
     #delay expansion because we can only do it after all of the build rules have been defined
@@ -262,7 +244,7 @@ class ExplicitTargetRule(ExplicitRule):
 # Meta/Pattern rules
 #-------------------------------------------------------------------------------
 
-class MetaRule(Make):
+class MetaRule(BaseRule):
     """The base class for rules that contain wildcards or patterns in their targets.
     This shouldn't be used directly.
     
@@ -330,8 +312,7 @@ class MetaRule(Make):
         rankings = [len(fpmatch.strip_specials(pattern)) for pattern in wild_targets]
         for regex,rank in zip(self.re_targets,rankings):
             self._pattern_rankings[regex] = rank
-        
-        
+    
     def individuate(self,target,regex):
         """updates the explicit rule for the target. Will raise Error
         if the target is incompatible with the metarule."""
@@ -503,18 +484,27 @@ class PatternRule(MetaRule):
         return newrule
 
 
-
-## Adding children classes to Make searchlist
-
-Make.searchorder = [ExplicitRule,ExplicitTargetRule,WildSharedRule,WildRule,PatternRule]
-
-
-## build system function decorator (user interface)
+## build system user interface
 ##-----------------------------------------------------------------------------------------
 
-def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
-    """selects the appropriate rule class to use and returns a decorator
-    function if func==None. 
+class ManyRules(list):
+    """subclass of list type for holding several rule instances, that can also be
+    used as a decorator"""
+    
+    def __call__(self,func):
+        for rule in self:
+            rule.func = func
+        return func
+
+  
+class Rule(BaseRule):
+    """Acts as an interface to the build system through its methods.
+    
+    Also acts as a factory class for selecting and creating the appropriate rule 
+    class to use. All rule instances can also be used as decorators around build 
+    recipe functions (in this case leave func=None).
+    
+    parameters:
         targets - single target or sequence of targets
         reqs - single prerequisite or sequence of prerequisites
         order_only - single dependency or sequence of order only prerequisites
@@ -528,48 +518,84 @@ def rule(targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
     They may also contain the '%' wildcard for defining pattern rules (like
     make).
     """
-    targets = checkseq(targets)
-    reqs = checkseq(reqs)
-    order_only = checkseq(order_only)
-
-    newrules = None
-    if shared:
-        if not any(fpmatch.has_magic(target) for target in targets):
-            if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
-                newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
-            else:
-                newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
-        elif has_pattern(targets):
-            raise AssertionError('shared pattern rule type not written yet')
-        else: #wildcard targets
-            newrule = WildSharedRule(targets,reqs,order_only,func,PHONY)
-    else:
-        if not any(fpmatch.has_magic(target) for target in targets):
-            if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
-                newrules = [ExplicitRule(target,reqs,order_only,func,PHONY) for target in targets] 
-                #or maybe use WildRule??
-            else:
-                newrules = [ExplicitTargetRule(target,reqs,order_only,func,PHONY) for target in targets] 
-                #or maybe use WildRule??
-        elif any(fpmatch.has_pattern(target) for target in targets): 
-            #in fact all targets should have a pattern wildcard but error checking will occur in class.
-            newrule = PatternRule(targets,reqs,order_only,func,PHONY)
-        else: #wildcard targets
-            newrule = WildRule(targets,reqs,order_only,func,PHONY)
+    searchorder = [ExplicitRule,ExplicitTargetRule,WildSharedRule,WildRule,PatternRule]
     
-    #-------------------
-    if func==None:
-        if newrules:
-            def setfunc(func):
-                for newrule in newrules:
-                    newrule.func = func
-                return func #so that we can have multiple decorators on each function!
+    @classmethod
+    def get(cls,target,default=None):
+        """Searches for rule with matching target. Pattern matching is performed 
+        and the best match is returned. So target must be explicit. If the target
+        rule is not found, returns default."""
+        for cls in cls.searchorder:
+            rule = cls.get(target,default)
+            if rule != default:
+                break
+        return rule 
+        #AssertionError("No target found for %r" %target)
+                
+    @classmethod
+    def calc_build_order(cls,target):
+        """calculate the build order to get system up to date"""    
+        toprule = cls.get(target)
+        build_order = toprule.calc_build()
+        return build_order
+    
+    @classmethod
+    def reset_cache(cls):
+        """resets the memoize/cached_property/instantiated_rules caches"""
+        for obj in [BaseRule] + self.searchorder:
+            obj.reset_cache()
+    
+    @staticmethod
+    def build(buildorder):
+        for task in buildorder:
+            task.build()
+            
+    def __new__(cls,targets,reqs,order_only=None,func=None,PHONY=False,shared=False):
+        """selects and creates the appropriate rule class to use. All rule instances
+        can also be used as decorators around build recipe functions (in this case
+        leave func=None).
+            targets - single target or sequence of targets
+            reqs - single prerequisite or sequence of prerequisites
+            order_only - single dependency or sequence of order only prerequisites
+            func - the build function that should take one or no arguments. Will be
+                passed this class instance when run in order to have access
+                to its attributes.
+            PHONY - a phony rule always runs irrespective of file modification times
+            shared - shared rules run their build function a single time for all of
+                their targets.
+        targets and reqs may contain glob patterns (see fnmatch and glob modules).
+        They may also contain the '%' wildcard for defining pattern rules (like
+        make).
+        """
+        targets = checkseq(targets)
+        reqs = checkseq(reqs)
+        order_only = checkseq(order_only)
+        
+        if shared:
+            if not any(fpmatch.has_magic(target) for target in targets):
+                if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
+                    newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
+                else:
+                    newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
+            elif has_pattern(targets):
+                raise AssertionError('shared pattern rule type not written yet')
+            else: #wildcard targets
+                newrule = WildSharedRule(targets,reqs,order_only,func,PHONY)
         else:
-            def setfunc(func):
-                newrule.func = func
-                return func #so that we can have multiple decorators on each function!
-
-        return setfunc
+            if not any(fpmatch.has_magic(target) for target in targets):
+                if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
+                    newrule = ManyRules(ExplicitRule(target,reqs,order_only,func,PHONY) for target in targets)
+                    #or maybe use WildRule??
+                else:
+                    newrule = ManyRules(ExplicitTargetRule(target,reqs,order_only,func,PHONY) for target in targets)
+                    #or maybe use WildRule??
+            elif any(fpmatch.has_pattern(target) for target in targets): 
+                #in fact all targets should have a pattern wildcard but error checking will occur in class.
+                newrule = PatternRule(targets,reqs,order_only,func,PHONY)
+            else: #wildcard targets
+                newrule = WildRule(targets,reqs,order_only,func,PHONY)
+        
+        return newrule
 
 
 """
