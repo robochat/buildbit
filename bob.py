@@ -184,7 +184,9 @@ class ExplicitRule(Make):
 
 class ExplicitTargetRule(ExplicitRule):
     """A multiple target, multiple prerequisite rule where the targets mustn't
-    contain wildcards but the reqs list can."""
+    contain wildcards but the reqs list can.
+    """
+    rules = {}
     
     #rules = {} #shares ExplicitRule's rules datastructure
     
@@ -480,7 +482,7 @@ class PatternRule(MetaRule):
 
 ## Adding children classes to Make searchlist
 
-Make.searchorder = [ExplicitRule,WildSharedRule,WildRule,PatternRule]
+Make.searchorder = [ExplicitRule,ExplicitTargetRule,WildSharedRule,WildRule,PatternRule]
 
 
 ## build system function decorator (user interface)
