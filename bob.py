@@ -13,13 +13,14 @@ import inspect
 import fpmatch
 from utils import *
 
+# Choose cached_property implementation
 #cached_property = reify # very cool and efficient but can't reset
 #cached_property = property # not strictly correct as dependency expansions shouldn't change during a build.
 #cached_property = cached_property #can be reset by doing class.method.reset_cache()
 
-@memoize
-def get_mtime(fpath):
-    return os.path.getmtime(fpath)
+class BaseRule(object):
+    """Acts as a base class and contains the cached get_mtime method for getting
+    a file's modification time."""
     
 class Make(object):
     """Acts as a base class and contains the get() method for finding the best match
@@ -493,12 +494,12 @@ class PatternRule(MetaRule):
         #pattern matching, finding best match
         res =regex.match(target)
         if not res: raise AssertionError
-        patterns = res.groups()
-        ireqs = [subst_patterns(req,patterns) for req in self.allreqs]
-        iorder_only = [subst_patterns(req,patterns) for req in self.order_only]
+        stems = res.groups()
+        ireqs = [subst_patterns(req,stems) for req in self.allreqs]
+        iorder_only = [subst_patterns(req,stems) for req in self.order_only]
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
                                 func=self.func,PHONY=self.PHONY)
-        newrule.patterns = patterns #useful attribute
+        newrule.stems = stems #useful attribute
         return newrule
 
 
