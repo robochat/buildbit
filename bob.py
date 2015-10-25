@@ -135,7 +135,7 @@ class ExplicitRule(Make):
     def updated_only(self):
         """makes a list of the reqs which are newer than any of the targets"""
         oldest_target = self._oldest_target
-        updated_reqs = [req for req in self.reqs if get_mtime(req) > oldest_target]
+        updated_reqs = [req for req in self.reqs if not os.path.exists(req) or get_mtime(req) > oldest_target]
         return updated_reqs
     
     #@memoize 
@@ -148,6 +148,9 @@ class ExplicitRule(Make):
         #the calc_build method call.
         #i.e. if (self in buildseq) or (self in _already_seen): return buildseq
         #Or we can memoize this method
+        
+        #updated_only should be calculated during build calculation time (rather than build time) for consistancy.
+        self.updated_only #force evaluation of lazy property
         
         buildseq = OrderedSet()
         
