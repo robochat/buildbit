@@ -93,7 +93,7 @@ class ExplicitRule(BaseRule):
         #Add self to class level registry
         for target in self.targets:
             if target in self.rules:
-                warnings.warn('ExplicitRule takes the last defined rule for each target. Overwriting the rule for %r' %target)
+                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target)
             self.rules[target] = self
     
     def build(self):
@@ -187,7 +187,7 @@ class ExplicitTargetRule(ExplicitRule):
     """A multiple target, multiple prerequisite rule where the targets mustn't
     contain wildcards but the reqs list can.
     """
-    rules = {}
+    #rules = {} # uses ExplicitRule's rule registry to avoid having duplicate rules
     
     @classmethod
     def reset_cache(cls):
@@ -213,7 +213,7 @@ class ExplicitTargetRule(ExplicitRule):
         #Add self to class level registry
         for target in self.targets:
             if target in self.rules:
-                warnings.warn('ExplicitTargetRule takes the last defined rule for each target. Overwriting the rule for %r' %target)
+                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target)
             self.rules[target] = self
     
     #delay expansion because we can only do it after all of the build rules have been defined
@@ -232,10 +232,10 @@ class ExplicitTargetRule(ExplicitRule):
     
     @classmethod
     def expand_wildcard(self,fpath):        
-        """Uses the glob module to search the file system and ??an altered glob module??
+        """Uses the glob module to search the file system and an altered glob module - fpmatch
         to search the meta rules.
         """
-        matches = glob.glob(fpath) 
+        matches = glob.glob(fpath)
         matches += fpmatch.filter(self.rules.iterkeys(),fpath)
         if len(matches) == 0: raise AssertionError("No matching file or rule found for %r" %fpath)
         return dedup(matches)
@@ -518,7 +518,7 @@ class Rule(BaseRule):
     They may also contain the '%' wildcard for defining pattern rules (like
     make).
     """
-    searchorder = [ExplicitRule,ExplicitTargetRule,WildSharedRule,WildRule,PatternRule]
+    searchorder = [ExplicitRule,WildSharedRule,WildRule,PatternRule]
     
     @classmethod
     def get(cls,target,default=None):
@@ -542,7 +542,7 @@ class Rule(BaseRule):
     @classmethod
     def reset_cache(cls):
         """resets the memoize/cached_property/instantiated_rules caches"""
-        for obj in [BaseRule] + self.searchorder:
+        for obj in [BaseRule,ExplicitTargetRule] + self.searchorder:
             obj.reset_cache()
     
     @staticmethod
