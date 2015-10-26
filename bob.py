@@ -525,15 +525,15 @@ class Rule(BaseRule):
         """Searches for rule with matching target. Pattern matching is performed 
         and the best match is returned. So target must be explicit. If the target
         rule is not found, returns default."""
-        for cls in cls.searchorder:
-            rule = cls.get(target,default)
+        for subcls in cls.searchorder:
+            rule = subcls.get(target,default)
             if rule != default:
                 break
         return rule 
         #AssertionError("No target found for %r" %target)
                 
     @classmethod
-    def calc_build_order(cls,target):
+    def calc_build(cls,target):
         """calculate the build order to get system up to date"""    
         toprule = cls.get(target)
         build_order = toprule.calc_build()
