@@ -1,0 +1,10 @@
+syntax: glob
+
+*.pyc
+*~
+*.orig
+*.bak
+*.out
+*.pkl
+*.profile
+*.rej 
