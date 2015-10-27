@@ -542,7 +542,7 @@ class Rule(BaseRule):
     @classmethod
     def reset_cache(cls):
         """resets the memoize/cached_property/instantiated_rules caches"""
-        for obj in [BaseRule,ExplicitTargetRule] + self.searchorder:
+        for obj in [BaseRule,ExplicitTargetRule] + cls.searchorder:
             obj.reset_cache()
     
     @staticmethod
