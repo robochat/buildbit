@@ -8,6 +8,8 @@ import warnings
 import glob
 import itertools
 import inspect
+from types import StringTypes
+import subprocess
 #from sys import maxint
 
 import fpmatch
@@ -99,14 +101,21 @@ class ExplicitRule(BaseRule):
     def build(self):
         """run recipe"""
         if hasattr(self,'func'):
-            func_argspec = inspect.getargspec(self.func)
-            func_args = func_argspec[0]
-            if len(func_args)==1:
-                self.func(self)
-            elif len(func_args)==0:
-                self.func()
+            if isinstance(self.func,StringTypes)
+                subprocess.check_call(self.func,shell=True)
+            elif isinstance(self.func,list):
+                subprocess.check_call(self.func,shell=False)
+            elif callable(self.func):
+                func_argspec = inspect.getargspec(self.func)
+                func_args = func_argspec[0]
+                if len(func_args)==1:
+                    self.func(self)
+                elif len(func_args)==0:
+                    self.func()
+                else:
+                    raise AssertionError("Unable to use a rule function that takes more than one argument. rule: %r" %self.targets)
             else:
-                raise AssertionError("Unable to use a rule function that takes more than one argument. rule: %r" %self.targets)
+                warnings.warn("ExplicitRule %r doesn't have a recognised type of build function attached." %target)
     
     @cached_property
     def _oldest_target(self):
@@ -521,7 +530,8 @@ class Rule(BaseRule):
         order_only - single dependency or sequence of order only prerequisites
         func - the build function that should take one or no arguments. Will be
             passed this class instance when run in order to have access
-            to its attributes.
+            to its attributes. Alternatively could be a string or list of strings
+            that will be directly run on the command line.
         PHONY - a phony rule always runs irrespective of file modification times
         shared - shared rules run their build function a single time for all of
             their targets.
