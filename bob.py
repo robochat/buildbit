@@ -272,8 +272,11 @@ class MetaRule(BaseRule):
     #_pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
     
     @classmethod
-    def get(cls,target,default=None):
+    def get(cls,target,default=None,extratargetpath=''):
         """get the best matched rule for the target from the registry of metarules
+        target - target filepath string.
+        default - response if no match is found.
+        extratargetpath - used by PatternRule.
         """
         #optimisation
         rule = cls._instantiated_rules.get(target,None)
@@ -293,8 +296,9 @@ class MetaRule(BaseRule):
         #create the desired explicit rule
         if match:
             metarule = cls.meta_rules[match]
-            newrule = metarule.individuate(target,match)
-            cls._instantiated_rules[target] = newrule #cache the individuated rule
+            fulltarget = os.path.join(extratargetpath,target)
+            newrule = metarule.individuate(fulltarget,match)
+            cls._instantiated_rules[fulltarget] = newrule #cache the individuated rule
             return newrule
         else:
             return default
@@ -466,7 +470,20 @@ class PatternRule(MetaRule):
     @classmethod
     def reset_cache(cls):
         cls._instantiated_rules = {}
-    
+        
+    @classmethod
+    def get(cls,target,default=None):
+        """get the best matched rule for the target from the registry of pattern rules
+        """
+        newrule = MetaRule.get(cls,target,None)
+        if newrule is None: 
+            #then do a final search of pattern rules with target's directory path removed
+            targetname = os.path.basename(target)
+            targetpath = os.path.dirname(target)
+            newrule = MetaRule.get(cls,targetname,default,extratargetpath=targetpath)
+        return newrule
+
+
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """Note: All targets must have at least the same number of % wildcards as the prerequisite
         with the highest number of them."""
@@ -486,7 +503,10 @@ class PatternRule(MetaRule):
             return s
         #pattern matching, finding best match
         res =regex.match(target)
-        if not res: raise AssertionError
+        if not res: 
+            res = regex.match(os.path.basename(target))
+            if not res:
+                raise AssertionError
         stems = res.groups()
         ireqs = [subst_patterns(req,stems) for req in self.allreqs]
         iorder_only = [subst_patterns(req,stems) for req in self.order_only]
