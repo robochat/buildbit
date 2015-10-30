@@ -499,8 +499,16 @@ class ManyRules(list):
         for rule in self:
             rule.func = func
         return func
+        
+    @property
+    def func(self):
+        return self[0].func
+        
+    @func.settr
+    def func(self,f):
+        for rule in self:
+            rule.func = f
 
-  
 class Rule(BaseRule):
     """Acts as an interface to the build system through its methods.
     
