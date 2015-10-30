@@ -122,12 +122,14 @@ class ExplicitRule(BaseRule):
         return updated_reqs
     
     #@memoize 
-    def calc_build(self):
+    def calc_build(self,_seen=None):
         """decides if it needs to be built by recursively asking it's prerequisites
-        the same question"""
-        
-        #No oportunity to optimise calculations to occur only once for rules that are called multiple times
-        #unless we change to a shared (global) buildseq + _already_seen set, or pass those structures into
+        the same question.
+        _seen is an internal variable (a set) for optimising the search. I'll be relying 
+        on the set being a mutable container in order to not have to pass it explicitly 
+        back up the call stack."""
+        #There is an oportunity to optimise calculations to occur only once for rules that are called multiple
+        #times by using a shared (global) buildseq + _already_seen set, or by passing those structures into
         #the calc_build method call.
         #i.e. if (self in buildseq) or (self in _already_seen): return buildseq
         #Or we can memoize this method
@@ -136,18 +138,20 @@ class ExplicitRule(BaseRule):
         self.updated_only #force evaluation of lazy property
         
         buildseq = OrderedSet()
+        _seen = set() if not _seen else _seen
+        _seen.add(self)
         
         for req in self.order_only:
             if not os.path.exists(req):
                 reqrule = Rule.get(req,None) #super(ExplicitRule,self).get(req,None)
-                if reqrule:
+                if reqrule and reqrule not in _seen:
                     buildseq.update(reqrule.calc_build())
                 else:
                     warnings.warn('Rule rule for %r has an order_only prerequisite with no rule' %self.targets)
         
         for req in self.reqs:
             reqrule = Rule.get(req,None) #super(ExplicitRule,self).get(req,None)
-            if reqrule:
+            if reqrule and reqrule not in _seen:
                 buildseq.update(reqrule.calc_build())
             else: #perform checks
                 try:
