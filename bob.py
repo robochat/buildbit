@@ -59,7 +59,7 @@ class ExplicitRule(BaseRule):
     shouldn't be any wildcards in the targets and reqs lists. reqs can
     contain duplicates and be order dependent though.
     
-    The class can also be used as a decorater????
+    This class can also be used as a decorater around the desired build function.
     """
     rules = {} #target:rule dict
     
@@ -139,7 +139,7 @@ class ExplicitRule(BaseRule):
         
         buildseq = OrderedSet()
         _seen = set() if not _seen else _seen
-        _seen.add(self)
+        _seen.add(self) # this will also solve any circular dependency issues!
         
         for req in self.order_only:
             if not os.path.exists(req):
@@ -343,7 +343,6 @@ class MetaRule(BaseRule):
 
 ## rules where those with multiple targets are still only run once.
 ##------------------------------------------------------------------------------
-
 
 class WildSharedRule(MetaRule):
     """A multiple target, multiple prerequisite rule where the targets and the
@@ -610,17 +609,8 @@ class Rule(BaseRule):
         return newrule
 
 
-"""
-Questions:
-Is a singleton class like Build a good idea?
-Should MetaRule and ExplicitRule be usable directly? In which case, should they add themselves to the build class
-Does expand_wildcards belong on MetaRule? This means that it needs to be able call the Build.get() method, but
-individualate needs to call expand_wildcards() whatever and so it must know how to access the build class anyway.
-If MetaRule and ExplicitRule were never called directly, Build could be a normal class and could pass itself to
-their initialisation routines. Then could have multiple copies of Build (but why?)
-
-Should I have a separate decorate function/class or should I add it to one of the classes? or both of the classes
-
-Q. Exclude targets from dependency search to avoid circular dependencies....
-Q. replace memoize with cached property in appropriate cases.
-"""
+# To do
+# add pattern matching to target basename
+# add checks to PatternRule
+# write unittests
+# general testing of system and all of its features
