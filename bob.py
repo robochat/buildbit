@@ -26,6 +26,14 @@ class BaseRule(object):
     """Acts as a base class and contains the cached get_mtime method for getting
     a file's modification time."""
     
+    #required class attribute
+    #rules = {} # class level dict of target to class instances for creating a search registry.
+    
+    #example minimal init
+    #def __init__(self,targets,func=None):
+    #   self.targets = checkseq(targets) # sequence of paths (strings)
+    #   if func: self.func = func
+    
     @classmethod
     def get(self):
         raise NotImplementedError
