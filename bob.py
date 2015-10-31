@@ -48,6 +48,9 @@ class BaseRule(object):
         self.func = func
         return func
     
+    def __repr__(self):
+        return '<%s.%s(targets=%r...) at %s>' %(self.__module__,self.__class__.__name__,self.targets,hex(id(self)))
+    
     def build(self):
         raise NotImplementedError
         
@@ -201,9 +204,6 @@ class ExplicitRule(BaseRule):
             buildseq.add(self)
         
         return buildseq
-
-    def __repr__(self):
-        return '<%r targets:%r>' %(self.__class__.__name__,self.targets)
 
 
 class ExplicitTargetRule(ExplicitRule):
