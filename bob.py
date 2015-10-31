@@ -581,7 +581,16 @@ class Rule(BaseRule):
                 break
         return rule 
         #AssertionError("No target found for %r" %target)
-                
+    
+    @classmethod
+    def allrules(cls):
+        """returns all of the defined rules (Explicit and Meta), this is mostly for
+        debugging and inspection purposes"""
+        rules = []
+        for subcls in cls.searchorder:
+            rules+=subcls.rules.values()
+        return rules
+    
     @classmethod
     def calc_build(cls,target):
         """calculate the build order to get system up to date"""    
