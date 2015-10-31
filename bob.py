@@ -20,6 +20,8 @@ from utils import *
 #cached_property = property # not strictly correct as dependency expansions shouldn't change during a build.
 #cached_property = cached_property #can be reset by doing class.method.reset_cache()
 
+warnings.filterwarnings(action='always')
+
 class BaseRule(object):
     """Acts as a base class and contains the cached get_mtime method for getting
     a file's modification time."""
@@ -30,7 +32,7 @@ class BaseRule(object):
     
     @classmethod
     def reset_cache(cls):
-        self.get_mtime.cache = {}
+        cls.get_mtime.cache = {}
     
     def __call__(self,func):
         """a rule instance can be used as a decorator on the build recipe function.
@@ -101,7 +103,7 @@ class ExplicitRule(BaseRule):
     def build(self):
         """run recipe"""
         if hasattr(self,'func'):
-            if isinstance(self.func,StringTypes)
+            if isinstance(self.func,StringTypes):
                 subprocess.check_call(self.func,shell=True)
             elif isinstance(self.func,list):
                 subprocess.check_call(self.func,shell=False)
@@ -411,7 +413,6 @@ class WildSharedRule(MetaRule):
         return erule
 
 
-
 ## rules for which those with multiple targets are shorthand for multiple individual rules.
 ##-----------------------------------------------------------------------------------------
 
@@ -457,7 +458,6 @@ class WildRule(MetaRule):
         return newrule
 
 
-
 class PatternRule(MetaRule):
     """A meta rule that can specialise to an explicit rule. It takes wildcards and
     patterns in the target and req lists. Multiple targets lead to individualised
@@ -475,12 +475,12 @@ class PatternRule(MetaRule):
     def get(cls,target,default=None):
         """get the best matched rule for the target from the registry of pattern rules
         """
-        newrule = MetaRule.get(cls,target,None)
+        newrule = super(PatternRule,cls).get(target,None)
         if newrule is None: 
             #then do a final search of pattern rules with target's directory path removed
             targetname = os.path.basename(target)
             targetpath = os.path.dirname(target)
-            newrule = MetaRule.get(cls,targetname,default,extratargetpath=targetpath)
+            newrule = super(PatternRule,cls).get(targetname,default,extratargetpath=targetpath)
         return newrule
 
 
@@ -532,10 +532,11 @@ class ManyRules(list):
     def func(self):
         return self[0].func
         
-    @func.settr
+    @func.setter
     def func(self,f):
         for rule in self:
             rule.func = f
+
 
 class Rule(BaseRule):
     """Acts as an interface to the build system through its methods.
@@ -625,10 +626,16 @@ class Rule(BaseRule):
         else:
             if not any(fpmatch.has_magic(target) for target in targets):
                 if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
-                    newrule = ManyRules(ExplicitRule(target,reqs,order_only,func,PHONY) for target in targets)
+                    if len(targets)<=1:
+                        newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
+                    else:
+                        newrule = ManyRules(ExplicitRule(target,reqs,order_only,func,PHONY) for target in targets)
                     #or maybe use WildRule??
                 else:
-                    newrule = ManyRules(ExplicitTargetRule(target,reqs,order_only,func,PHONY) for target in targets)
+                    if len(targets)<=1:
+                        newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
+                    else:
+                        newrule = ManyRules(ExplicitTargetRule(target,reqs,order_only,func,PHONY) for target in targets)
                     #or maybe use WildRule??
             elif any(fpmatch.has_pattern(target) for target in targets): 
                 #in fact all targets should have a pattern wildcard but error checking will occur in class.
@@ -640,7 +647,6 @@ class Rule(BaseRule):
 
 
 # To do
-# add pattern matching to target basename
 # add checks to PatternRule
 # write unittests
 # general testing of system and all of its features
