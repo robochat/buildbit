@@ -277,7 +277,7 @@ class MetaRule(BaseRule):
     build order). 
     """
     # define these in each subclass. - Doing it this way allows us to define the search order hierarchy.
-    #meta_rules = {} # compiled regular expression of target: meta_rule
+    #rules = {} # compiled regular expression of target: meta_rule
     #_instantiated_rules = {} # cache of instantiated explicit rules
     #_pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
     
@@ -293,7 +293,7 @@ class MetaRule(BaseRule):
         if rule: 
             return rule
         #else search metarules
-        matches = [regex for regex in cls.meta_rules.keys() if regex.match(target)]
+        matches = [regex for regex in cls.rules.keys() if regex.match(target)]
         #choose best
         if len(matches) == 1:
             match = matches[0]
@@ -305,7 +305,7 @@ class MetaRule(BaseRule):
             match = None
         #create the desired explicit rule
         if match:
-            metarule = cls.meta_rules[match]
+            metarule = cls.rules[match]
             fulltarget = os.path.join(extratargetpath,target)
             newrule = metarule.individuate(fulltarget,match)
             cls._instantiated_rules[fulltarget] = newrule #cache the individuated rule
@@ -333,7 +333,7 @@ class MetaRule(BaseRule):
         wild_targets = [target for target in targets if fpmatch.has_magic(target)]
         self.re_targets = [fpmatch.precompile(pattern) for pattern in wild_targets]
         for regex in self.re_targets:
-            self.meta_rules[regex] = self
+            self.rules[regex] = self
         
         #calculate pattern lengths
         rankings = [len(fpmatch.strip_specials(pattern)) for pattern in wild_targets]
@@ -373,7 +373,7 @@ class WildSharedRule(MetaRule):
     many different targets ask for it to run. The targets attribute will be 
     updated to contain each target that requests it.
     """
-    meta_rules = {} # compiled regular expression of target: meta_rule
+    rules = {} # compiled regular expression of target: meta_rule
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
     
@@ -428,7 +428,7 @@ class WildRule(MetaRule):
     """A meta rule that can specialise to an explicit rule. It takes wildcards and
     in the target and req lists. Multiple targets lead to individualised explicit 
     rules."""
-    meta_rules = {} # compiled regular expression of target: meta_rule
+    rules = {} # compiled regular expression of target: meta_rule
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
     
@@ -471,7 +471,7 @@ class PatternRule(MetaRule):
     patterns in the target and req lists. Multiple targets lead to individualised
     explicit rules.
     """
-    meta_rules = {}
+    rules = {}
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
 
