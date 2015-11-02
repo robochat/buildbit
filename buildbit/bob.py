@@ -569,7 +569,7 @@ class Rule(BaseRule):
     make).
     """
     searchorder = [ExplicitRule,WildSharedRule,WildRule,PatternRule]
-    
+        
     @classmethod
     def get(cls,target,default=None):
         """Searches for rule with matching target. Pattern matching is performed 
