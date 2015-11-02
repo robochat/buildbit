@@ -115,8 +115,10 @@ class ExplicitRule(BaseRule):
         """run recipe"""
         if hasattr(self,'func'):
             if isinstance(self.func,StringTypes):
+                cmd = self.func.format(self=self)
                 subprocess.check_call(self.func,shell=True)
             elif isinstance(self.func,list):
+                cmd = [part.format(self=self) for part in self.func]
                 subprocess.check_call(self.func,shell=False)
             elif callable(self.func):
                 func_argspec = inspect.getargspec(self.func)
