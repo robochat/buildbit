@@ -398,7 +398,7 @@ class WildSharedRule(MetaRule):
         # A single ExplicitRule will shared between all targets.
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
         self.explicitrules = [ExplicitTargetRule(targets=explicit_targets,
-                                        reqs=ireqs,order_only=iorder_only,
+                                        reqs=reqs,order_only=order_only,
                                         func=self.func,PHONY=self.PHONY)]
         #only one rule is defined but we store it in the explicitrules list for
         #compatibility with the parent object's func getter/setter descriptors.
@@ -638,7 +638,7 @@ class Rule(BaseRule):
                     newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
                 else:
                     newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
-            elif has_pattern(targets):
+            elif fpmatch.has_pattern(targets):
                 raise AssertionError('shared pattern rule type not written yet')
             else: #wildcard targets
                 newrule = WildSharedRule(targets,reqs,order_only,func,PHONY)
