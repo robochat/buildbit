@@ -153,9 +153,9 @@ class ExplicitRule(BaseRule):
         if hasattr(self,'stems'): param['stems'] = self.stems
         
         if isinstance(cmd,StringTypes):
-            fullcmd = cmd.format(param)
+            fullcmd = cmd.format(**param)
         elif isinstance(cmd,Iterable):
-            fullcmd = [part.format(param) for part in cmd]
+            fullcmd = [part.format(**param) for part in cmd]
         return fullcmd
     
     @cached_property
@@ -623,7 +623,7 @@ class Rule(BaseRule):
         rules = []
         for subcls in cls.searchorder:
             rules+=subcls.rules.values()
-        return rules
+        return dedup(rules)
     
     @classmethod
     def calc_build(cls,target):
