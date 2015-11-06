@@ -417,7 +417,7 @@ class WildSharedRule(MetaRule):
             passed this class instance when run in order to have access
             to its attributes
         """
-        super(WildSharedRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
+        super(WildSharedRule,self).__init__(targets,reqs,order_only,func,PHONY)
         #check parameters
         pass
         
@@ -472,7 +472,7 @@ class WildRule(MetaRule):
             passed this class instance when run in order to have access
             to its attributes.
         """
-        super(WildRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
+        super(WildRule,self).__init__(targets,reqs,order_only,func,PHONY)
         #Check parameters
         pass
         
@@ -523,7 +523,7 @@ class PatternRule(MetaRule):
     def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
         """Note: All targets must have at least the same number of % wildcards as the prerequisite
         with the highest number of them."""
-        super(PatternRule,self).__init__(targets,reqs,order_only=None,func=None,PHONY=False)
+        super(PatternRule,self).__init__(targets,reqs,order_only,func,PHONY)
         #Check parameters
         pass
     
