@@ -530,8 +530,8 @@ class PatternRule(MetaRule):
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
         if the target is incompatible with the metarule"""
-        #check target
-        
+        #check regex
+        assert regex in self.re_targets                
         #inplace pattern substitution
         def subst_patterns(s,patterns):
             for pattern in patterns:
@@ -539,13 +539,19 @@ class PatternRule(MetaRule):
             return s
         #pattern matching, finding best match
         res =regex.match(target)
-        if not res: 
+        if res:
+            stems = res.groups()
+            ireqs = [subst_patterns(req,stems) for req in self.allreqs]
+            iorder_only = [subst_patterns(req,stems) for req in self.order_only]
+        else: #try matching by basename
             res = regex.match(os.path.basename(target))
             if not res:
-                raise AssertionError
-        stems = res.groups()
-        ireqs = [subst_patterns(req,stems) for req in self.allreqs]
-        iorder_only = [subst_patterns(req,stems) for req in self.order_only]
+                raise AssertionError("target doesn't match rule pattern")
+            targetpath = os.path.dirname(target)
+            stems = res.groups()
+            ireqs = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.allreqs]
+            iorder_only = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.order_only]
+        
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
                                 func=self.func,PHONY=self.PHONY)
         newrule.stems = stems #useful attribute
