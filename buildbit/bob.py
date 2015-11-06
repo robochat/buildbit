@@ -9,6 +9,7 @@ import glob
 import itertools
 import inspect
 from types import StringTypes
+from collections import Iterable
 import subprocess
 #from sys import maxint
 
@@ -115,11 +116,11 @@ class ExplicitRule(BaseRule):
         """run recipe"""
         if hasattr(self,'func'):
             if isinstance(self.func,StringTypes):
-                cmd = self.func.format(self=self)
-                subprocess.check_call(self.func,shell=True)
+                cmd = self.cmd_action(self.func)
+                subprocess.check_call(cmd,shell=True)
             elif isinstance(self.func,list):
-                cmd = [part.format(self=self) for part in self.func]
-                subprocess.check_call(self.func,shell=False)
+                cmd = self.cmd_action(self.func)
+                subprocess.check_call(cmd,shell=False)
             elif callable(self.func):
                 func_argspec = inspect.getargspec(self.func)
                 func_args = func_argspec[0]
@@ -131,6 +132,31 @@ class ExplicitRule(BaseRule):
                     raise AssertionError("Unable to use a rule function that takes more than one argument. rule: %r" %self.targets)
             else:
                 warnings.warn("ExplicitRule %r doesn't have a recognised type of build function attached." %target)
+    
+    def cmd_action(self,cmd):
+        """expands the command line string using the rule's attributes"""
+        #convert sequences into comma separate strings or space separated strings?
+        param = {'targets':' '.join(self.targets),
+                 'allreqs':' '.join(self.allreqs),
+                 'reqs':' '.join(self.reqs),
+                 'order_only':' '.join(self.order_only),
+                 'updated_only':' '.join(self.updated_only),
+                 'self':self}
+        param2 = {'$@':param['targets'],
+                 '$^':param['reqs'],
+                 '$<':self.reqs[0],
+                 '$?':param['updated_only'],
+                 '$+':param['allreqs'],
+                 '$|':param['order_only'],
+                 }
+        param.update(param2)
+        if hasattr(self,'stems'): param['stems'] = self.stems
+        
+        if isinstance(cmd,StringTypes):
+            fullcmd = cmd.format(param)
+        elif isinstance(cmd,Iterable):
+            fullcmd = [part.format(param) for part in cmd]
+        return fullcmd
     
     @cached_property
     def _oldest_target(self):
