@@ -526,7 +526,7 @@ class PatternRule(MetaRule):
         """Note: All targets must have at least the same number of % wildcards as the prerequisite
         with the highest number of them."""
         super(PatternRule,self).__init__(targets,reqs,order_only,func,PHONY)
-        #Check parameters
+        #Check parameters - PatternRules shouldn't have any entries in self.explicit_rules
         pass
     
     def individuate(self,target,regex):
@@ -700,6 +700,6 @@ class Rule(BaseRule):
 
 
 # To do
-# add checks to PatternRule
+# add checks to PatternRule - PatternRules should have no entries in their self.explicit_rules 
 # write unittests
 # general testing of system and all of its features
