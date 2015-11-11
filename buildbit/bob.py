@@ -194,20 +194,26 @@ class ExplicitRule(BaseRule):
         for req in self.order_only:
             if not os.path.exists(req):
                 reqrule = Rule.get(req,None) #super(ExplicitRule,self).get(req,None)
-                if reqrule and reqrule not in _seen:
-                    buildseq.update(reqrule.calc_build())
+                if reqrule:
+                    if reqrule not in _seen:
+                        buildseq.update(reqrule.calc_build())
+                    else:
+                        warnings.warn('rule for %r has already been processed' %req,stacklevel=2)
                 else:
                     warnings.warn('%r has an order_only prerequisite with no rule' %self,stacklevel=2)
         
         for req in self.reqs:
             reqrule = Rule.get(req,None) #super(ExplicitRule,self).get(req,None)
-            if reqrule and reqrule not in _seen:
-                buildseq.update(reqrule.calc_build())
+            if reqrule:
+                if reqrule not in _seen:
+                    buildseq.update(reqrule.calc_build())
+                else:
+                    warnings.warn('rule for %r has already been processed' %req,stacklevel=2)
             else: #perform checks
                 try:
                     self.get_mtime(req) #get_mtime is cached to reduce number of file accesses
                 except OSError as e:
-                    raise AssertionError("No rule or file found for %r for targets: %r" %(req,self.targets))
+                    raise AssertionError("No rule or file found for %r for targets: %r" %(req,self.targets),stacklevel=2)
             
         if len(buildseq)==0:
             if self.PHONY or any([not os.path.exists(target) for target in self.targets]):
