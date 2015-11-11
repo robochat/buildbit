@@ -631,6 +631,7 @@ class Rule(BaseRule):
     def calc_build(cls,target):
         """calculate the build order to get system up to date"""    
         toprule = cls.get(target)
+        if not toprule: raise AssertionError("No rule or file found for %r" %(target))
         build_order = toprule.calc_build()
         return build_order
     
