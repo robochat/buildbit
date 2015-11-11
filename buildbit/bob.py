@@ -287,7 +287,9 @@ class ExplicitTargetRule(ExplicitRule):
         to search the meta rules.
         """
         matches = glob.glob(fpath)
-        matches += fpmatch.filter(self.rules.iterkeys(),fpath)
+        if fpmatch.has_magic(fpath): 
+            matches += fpmatch.filter(self.rules.iterkeys(),fpath)
+        else: matches += [fpath]
         if len(matches) == 0: raise AssertionError("No matching file or rule found for %r" %fpath)
         return dedup(matches)
 
