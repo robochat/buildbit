@@ -425,7 +425,7 @@ class WildSharedRule(MetaRule):
         
         # A single ExplicitRule will shared between all targets.
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
-        self.explicitrules = [ExplicitTargetRule(targets=explicit_targets,
+        self.explicit_rules = [ExplicitTargetRule(targets=explicit_targets,
                                         reqs=reqs,order_only=order_only,
                                         func=self.func,PHONY=self.PHONY)]
         #only one rule is defined but we store it in the explicitrules list for
@@ -438,7 +438,7 @@ class WildSharedRule(MetaRule):
         
         
         #Adding new target to explicit rule's target attribute.
-        erule = self.explicitrule[0]
+        erule = self.explicit_rules[0]
         erule.targets = dedup(erule.targets + [target])
         
         #Nb. We don't add target to the ExplicitRule rule registry since that would make
@@ -482,7 +482,7 @@ class WildRule(MetaRule):
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
         #saving references to explicit rules to allow us to have late-binding of the build func
         self.explicit_rules = [
-            ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,func=self.func,PHONY=self.PHONY)
+            ExplicitTargetRule(targets=target,reqs=reqs,order_only=order_only,func=self.func,PHONY=self.PHONY)
             for target in explicit_targets]
     
     def individuate(self,target,regex):
@@ -491,7 +491,7 @@ class WildRule(MetaRule):
         #check target
         
         #expanding wildcards in reqs        
-        newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
+        newrule = ExplicitTargetRule(targets=target,reqs=self.allreqs,order_only=self.order_only,
                                 func=self.func,PHONY=self.PHONY)
         return newrule
 
