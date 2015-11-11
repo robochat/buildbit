@@ -78,7 +78,7 @@ def strip_specials(pat):
             while j < n and pat[j] != ']':
                 j = j+1
             if j >= n:
-                res = res + '['
+                res = res + '[' #another corner case for when no close bracket is found.
             else:
                 i = j+1
         else:
@@ -86,7 +86,7 @@ def strip_specials(pat):
     return res
 
 
-magic_check = re.compile('[*?%[]')
+magic_check = re.compile('[*?%[]') #what about [] case or \\[ case or times that we use [] to escape metacharacters?
 
 def has_magic(s):
     return magic_check.search(s) is not None
