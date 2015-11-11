@@ -90,13 +90,16 @@ class ExplicitRule(BaseRule):
             method.reset_cache()
         #cls.calc_build.cache = {}
     
-    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
+    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False,register=True):
         """targets - list of targets
         reqs - seq of prerequisites
         order_only - seq of order only prerequisites
         func - a function that should take one or no arguments. Will be
             passed this class instance when run in order to have access
             to its attributes
+        PHONY - rule that should always be run (and probably won't 
+            create a file with the name of the target)
+        register - add new rule to class registry (normally this should be true)
         """
         self.targets = checkseq(targets)
         self.PHONY = PHONY
@@ -107,10 +110,11 @@ class ExplicitRule(BaseRule):
         #self.updated_only = self.updated_only()
         
         #Add self to class level registry
-        for target in self.targets:
-            if target in self.rules:
-                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target,stacklevel=2)
-            self.rules[target] = self
+        if register:
+            for target in self.targets:
+                if target in self.rules:
+                    warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target,stacklevel=2)
+                self.rules[target] = self
     
     def build(self):
         """run recipe"""
@@ -252,13 +256,16 @@ class ExplicitTargetRule(ExplicitRule):
         for method in cls.allreqs, cls.reqs, cls.order_only:
             method.reset_cache()
     
-    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
+    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False,register=True):
         """targets - list of targets
         reqs - seq of prerequisites
         order_only - seq of order only prerequisites
         func - a function that should take one or no arguments. Will be
             passed this class instance when run in order to have access
             to its attributes
+        PHONY - rule that should always be run (and probably won't 
+            create a file with the name of the target)
+        register - add new rule to class registry (normally this should be true)
         """
         self.targets = checkseq(targets)
         self.PHONY = PHONY
@@ -268,10 +275,11 @@ class ExplicitTargetRule(ExplicitRule):
         #self.updated_only = self.updated_only()
         
         #Add self to class level registry
-        for target in self.targets:
-            if target in self.rules:
-                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target,stacklevel=2)
-            self.rules[target] = self
+        if register:
+            for target in self.targets:
+                if target in self.rules:
+                    warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target,stacklevel=2)
+                self.rules[target] = self
     
     #delay expansion because we can only do it after all of the build rules have been defined
     
@@ -436,6 +444,8 @@ class WildSharedRule(MetaRule):
                                         func=self.func,PHONY=self.PHONY)]
         #only one rule is defined but we store it in the explicitrules list for
         #compatibility with the parent object's func getter/setter descriptors.
+        
+        #Nb. the explicit targets are add to the ExplicitRule registry as normal.
     
     def individuate(self,target,regex):
         """updates the explicit rule for the target. Will raise an Error
@@ -447,9 +457,9 @@ class WildSharedRule(MetaRule):
         erule = self.explicit_rules[0]
         erule.targets = dedup(erule.targets + [target])
         
-        #Nb. We don't add target to the ExplicitRule rule registry since that would make
-        # the build calculation order dependent/non-deterministic. Instead we add the
-        # rule to a class attribute dict (this is done by get() class method).
+        #Nb. This requested target isn't added to the ExplicitRule rule registry since 
+        # that would make the build calculation order dependent/non-deterministic. 
+        # Instead we add the rule to a class attribute dict (this is done by get() class method).
         
         #Last problem, old version of rule may already be in the build orderedset and I've just mutated the object?
         # python uses the id() of an object for its hash if no __hash__ method is defined, therefore the object can
@@ -484,7 +494,7 @@ class WildRule(MetaRule):
         #Check parameters
         pass
         
-        #Some of the targets may be explicit, in which case we can just directly create ExplicitRules
+        #Some of the targets may be explicit, in which case we can just directly create ExplicitRules as normal
         explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
         #saving references to explicit rules to allow us to have late-binding of the build func
         self.explicit_rules = [
@@ -498,7 +508,9 @@ class WildRule(MetaRule):
         
         #expanding wildcards in reqs        
         newrule = ExplicitTargetRule(targets=target,reqs=self.allreqs,order_only=self.order_only,
-                                func=self.func,PHONY=self.PHONY)
+                                func=self.func,PHONY=self.PHONY,register=False)
+        #we set register to false as we do not want this rule to be added to the
+        #ExplicitRule registry as that would make the build order dependent.
         return newrule
 
 
@@ -561,7 +573,9 @@ class PatternRule(MetaRule):
             iorder_only = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.order_only]
         
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
-                                func=self.func,PHONY=self.PHONY)
+                                func=self.func,PHONY=self.PHONY,register=False)
+        #we set register to false as we do not want this rule to be added to the
+        #ExplicitRule registry as that would make the build order dependent.
         newrule.stems = stems #useful attribute
         return newrule
 
