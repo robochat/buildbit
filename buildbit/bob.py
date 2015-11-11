@@ -109,7 +109,7 @@ class ExplicitRule(BaseRule):
         #Add self to class level registry
         for target in self.targets:
             if target in self.rules:
-                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target)
+                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target,stacklevel=2)
             self.rules[target] = self
     
     def build(self):
@@ -131,7 +131,7 @@ class ExplicitRule(BaseRule):
                 else:
                     raise AssertionError("Unable to use a rule function that takes more than one argument. rule: %r" %self.targets)
             else:
-                warnings.warn("ExplicitRule %r doesn't have a recognised type of build function attached." %target)
+                warnings.warn("ExplicitRule %r doesn't have a recognised type of build function attached." %self,stacklevel=2)
     
     def cmd_action(self,cmd):
         """expands the command line string using the rule's attributes"""
@@ -197,7 +197,7 @@ class ExplicitRule(BaseRule):
                 if reqrule and reqrule not in _seen:
                     buildseq.update(reqrule.calc_build())
                 else:
-                    warnings.warn('Rule rule for %r has an order_only prerequisite with no rule' %self.targets)
+                    warnings.warn('%r has an order_only prerequisite with no rule' %self,stacklevel=2)
         
         for req in self.reqs:
             reqrule = Rule.get(req,None) #super(ExplicitRule,self).get(req,None)
@@ -264,7 +264,7 @@ class ExplicitTargetRule(ExplicitRule):
         #Add self to class level registry
         for target in self.targets:
             if target in self.rules:
-                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target)
+                warnings.warn('ExplicitRules takes the last defined rule for each target. Overwriting the rule for %r' %target,stacklevel=2)
             self.rules[target] = self
     
     #delay expansion because we can only do it after all of the build rules have been defined
