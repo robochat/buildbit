@@ -1,0 +1,8 @@
+    
+add checks to PatternRule - PatternRules should have no entries in their self.explicit_rules attribute
+write unittests
+general testing of system and all of its features - currently only have example.py
+unit test for build orders that use the _seen() functionality
+unit test that individuated MetaRules don't add themselves to the ExplicitRule registry.
+improve commandline interface - buildseq could be prettified. 
+could also turn buildseq into a graphviz? but would want to show untouched vertices too... override get_mtime?

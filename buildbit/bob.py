@@ -745,10 +745,4 @@ class Rule(BaseRule):
             print 'Build sequence:'
             for item in buildseq: print item
             Rule.build(buildseq)
-    
-    
-    
-# To do
-# add checks to PatternRule - PatternRules should have no entries in their self.explicit_rules 
-# write unittests
-# general testing of system and all of its features
+
