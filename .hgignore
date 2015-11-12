@@ -8,3 +8,5 @@ syntax: glob
 *.pkl
 *.profile
 *.rej 
+
+buildbit/tests
