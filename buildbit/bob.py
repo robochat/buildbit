@@ -726,7 +726,28 @@ class Rule(BaseRule):
         
         return newrule
 
+    @staticmethod
+    def main():
+        """command line interface for buildbit system"""
+        import argparse
 
+        parser = argparse.ArgumentParser(description='The buildbit build system (a python version of make)')
+        parser.add_argument('target',default='All',help='select build target')
+        parser.add_argument('-n','--dry-run',dest='dryrun',action='store_true',help='only print build sequence')
+        args = parser.parse_args()
+        
+        print 'Building target:', args.target
+        buildseq = Rule.calc_build(args.target)
+        if args.dryrun:
+            print 'Build sequence:'
+            for item in buildseq: print item
+        else:
+            print 'Build sequence:'
+            for item in buildseq: print item
+            Rule.build(buildseq)
+    
+    
+    
 # To do
 # add checks to PatternRule - PatternRules should have no entries in their self.explicit_rules 
 # write unittests
