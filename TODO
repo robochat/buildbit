@@ -6,3 +6,13 @@ unit test for build orders that use the _seen() functionality
 unit test that individuated MetaRules don't add themselves to the ExplicitRule registry.
 improve commandline interface - buildseq could be prettified. 
 could also turn buildseq into a graphviz? but would want to show untouched vertices too... override get_mtime?
+Add a shared patternrule class
+write README.md and setup.py
+    Emphasize where buildbit is different from make - 
+        shared rules, 
+        pattern rules are not currently shared,
+        req wildcards also search explicitrule registry.
+    build should not be calculation order dependent i.e. dependent upon order of rule analysis.
+        it shouldn't depend on prerequisite order etc.
+Add unit tests for prerequisite order and individuation of MetaRules...
+
