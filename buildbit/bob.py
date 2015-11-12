@@ -155,7 +155,7 @@ class ExplicitRule(BaseRule):
                  'self':self}
         param2 = {'$@':param['targets'],
                  '$^':param['reqs'],
-                 '$<':self.reqs[0],
+                 '$<':self.reqs[0] if len(self.reqs) else '',
                  '$?':param['updated_only'],
                  '$+':param['allreqs'],
                  '$|':param['order_only'],
