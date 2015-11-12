@@ -217,7 +217,7 @@ class ExplicitRule(BaseRule):
                 try:
                     self.get_mtime(req) #get_mtime is cached to reduce number of file accesses
                 except OSError as e:
-                    raise AssertionError("No rule or file found for %r for targets: %r" %(req,self.targets),stacklevel=2)
+                    raise AssertionError("No rule or file found for %r for targets: %r" %(req,self.targets))
             
         if len(buildseq)==0:
             if self.PHONY or any([not os.path.exists(target) for target in self.targets]):
