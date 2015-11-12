@@ -65,7 +65,15 @@ of the rule instances).
 The targets, reqs and order_only parameters of Rule will accept sequences or simple strings
 of file paths. These can also contain wildcards conforming to the format used by the 
 python standard libraries fnmatch or glob where metacharacters are ``[][!]*?``. In addition
-the wildcard character '``%``' can be used as in gmake to create pattern rules.       
+the wildcard character '``%``' can be used as in gmake to create pattern rules.
+
+The system calculated build sequence should be independent of the order of the rules and
+the order of their prerequisites in order to avoid surprising behaviour. For this reason
+meta rules are considered separately from explicit rules during the build sequence calculation
+i.e. an 'instantiated' meta rule doesn't get included in the explicit rule list which could
+affect the processing of the rules that come after it. However, the presence of files in 
+the build directory can affect wildcard prerequisites and change the behaviour of rebuilds
+just like with gmake or any similar system.        
 
 Here is a small example of usage::
 
