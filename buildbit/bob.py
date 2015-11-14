@@ -551,7 +551,10 @@ class PatternRule(MetaRule):
         with the highest number of them."""
         super(PatternRule,self).__init__(targets,reqs,order_only,func,PHONY)
         #Check parameters - PatternRules shouldn't have any entries in self.explicit_rules
-        pass
+        assert all(fpmatch.has_pattern(target) for target in targets)
+        #counting number of % (excluding sets)
+        #assert ( max([pattern_count(req) for req in reqs]+[pattern_count(req) for req in order_ony])
+        #         <= min(pattern_count(target) for target in targets) 
     
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
