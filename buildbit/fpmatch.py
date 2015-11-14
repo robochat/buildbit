@@ -25,6 +25,9 @@ def translate(pat):
                 j = j+1
             if j < n and pat[j] == ']':
                 j = j+1
+            #corner cases:
+              #[] or [!] treated as literals if no later closing bracket found, 
+              #if a later closing bracket is found then ']' is included in the choice set.
             while j < n and pat[j] != ']':
                 j = j+1
             if j >= n:
@@ -71,10 +74,17 @@ def strip_specials(pat):
             pass
         elif c == '[':
             j = i
+            if j+1 < n and pat[j+1] == ']' and pat[j] != '!': #special case to escape (a set with only one item)
+                res = res + pat[j]
+                i = i+2
+                continue
             if j < n and pat[j] == '!':
                 j = j+1
-            if j < n and pat[j] == ']': #weird corner case [] treated as a literal, not dropped.
+            if j < n and pat[j] == ']':
                 j = j+1
+            #corner cases:
+              #[] or [!] treated as literals if no later closing bracket found, 
+              #otherwise ']' is included in the set of choices.
             while j < n and pat[j] != ']':
                 j = j+1
             if j >= n:
@@ -86,10 +96,43 @@ def strip_specials(pat):
     return res
 
 
-magic_check = re.compile('[*?%[]') #what about [] case or \\[ case or times that we use [] to escape metacharacters?
+meta_check = re.compile('[*?%[]') 
+
+def has_meta(s):
+    return magic_check.search(s) is not None
 
 def has_magic(s):
-    return magic_check.search(s) is not None
+    """tests whether a string contains unescaped metacharacters. This tests for the
+    presence of *?% characters and any sets [...] or [!...] with the exception of
+    sets that contain only a single entry (which is the only way of escaping the
+    metacharacters)."""
+    i, n = 0, len(s)
+    res = False
+    while i < n:
+        c = s[i]
+        i = i+1
+        if c in ('*','?','%'):
+            res = True
+        elif c == '[':
+            j = i
+            if j+1 < n and s[j+1] == ']' and s[j] != '!': #special case to escape (a set with only one item)
+                i = i+2
+                continue
+            if j < n and s[j] == '!':
+                j = j+1
+            if j < n and s[j] == ']':
+                j = j+1
+            #corner cases:
+            #[] or [!] treated as literals if no later closing bracket found, 
+            #otherwise ']' is included in the set of choices.
+            while j < n and s[j] != ']':
+                j = j+1
+            if j >= n:
+                pass #corner case for when no close bracket is found.
+            else:
+                i = j+1
+                res = True
+    return res
 
 def has_pattern(s):
     """find if glob  has a rule pattern (%) wildcard.
@@ -110,3 +153,10 @@ def has_pattern(s):
             else:
                 i = j+1
     return res
+
+
+def only_explicit_paths(seq):
+    return [strip_specials(path) for path in seq if not has_magic(path)]
+
+def only_wild_paths(seq):
+    return [path for path in seq if has_magic(path)]

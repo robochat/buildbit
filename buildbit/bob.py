@@ -29,7 +29,6 @@ warnings.formatwarning = lambda message, category, filename, lineno, line=None: 
     formatwarning_orig(message, category, os.path.basename(filename), lineno, line='')
 
 
-
 class BaseRule(object):
     """Acts as a base class and contains the cached get_mtime method for getting
     a file's modification time."""
@@ -310,7 +309,7 @@ class ExplicitTargetRule(ExplicitRule):
         matches = glob.glob(fpath)
         if fpmatch.has_magic(fpath): 
             matches += fpmatch.filter(self.rules.iterkeys(),fpath)
-        else: matches += [fpath]
+        else: matches += [fpmatch.strip_specials(fpath)] #can still have single escaped chars in sets when magic==False
         if len(matches) == 0: raise AssertionError("No matching file or rule found for %r" %fpath)
         return dedup(matches)
 
@@ -381,7 +380,7 @@ class MetaRule(BaseRule):
         self._func = func
         
         #Add self to registry of rules
-        wild_targets = [target for target in targets if fpmatch.has_magic(target)]
+        wild_targets = fpmatch.only_wild_paths(targets)
         self.re_targets = [fpmatch.precompile(pattern) for pattern in wild_targets]
         for regex in self.re_targets:
             self.rules[regex] = self
@@ -445,7 +444,7 @@ class WildSharedRule(MetaRule):
         pass
         
         # A single ExplicitRule will shared between all targets.
-        explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
+        explicit_targets = fpmatch.only_explicit_paths(targets)
         self.explicit_rules = [ExplicitTargetRule(targets=explicit_targets,
                                         reqs=reqs,order_only=order_only,
                                         func=self.func,PHONY=self.PHONY)]
@@ -502,7 +501,7 @@ class WildRule(MetaRule):
         pass
         
         #Some of the targets may be explicit, in which case we can just directly create ExplicitRules as normal
-        explicit_targets = [target for target in targets if not fpmatch.has_magic(target)]
+        explicit_targets = fpmatch.only_explicit_paths(targets)
         #saving references to explicit rules to allow us to have late-binding of the build func
         self.explicit_rules = [
             ExplicitTargetRule(targets=target,reqs=reqs,order_only=order_only,func=self.func,PHONY=self.PHONY)
@@ -696,7 +695,9 @@ class Rule(BaseRule):
         
         if shared:
             if not any(fpmatch.has_magic(target) for target in targets):
+                targets = [fpmatch.strip_specials(target) for target in targets]
                 if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
+                    reqs = [fpmatch.strip_specials(req) for req in reqs]
                     newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
                 else:
                     newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
@@ -706,7 +707,9 @@ class Rule(BaseRule):
                 newrule = WildSharedRule(targets,reqs,order_only,func,PHONY)
         else:
             if not any(fpmatch.has_magic(target) for target in targets):
+                targets = [fpmatch.strip_specials(target) for target in targets]
                 if not any(fpmatch.has_magic(req) for req in itertools.chain(reqs,order_only)):
+                    reqs = [fpmatch.strip_specials(req) for req in reqs]
                     if len(targets)<=1:
                         newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
                     else:
