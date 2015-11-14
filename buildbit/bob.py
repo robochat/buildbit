@@ -399,8 +399,8 @@ class MetaRule(BaseRule):
         """decides if the target is a match for this metarule."""
         for pattern in self.re_targets:
             if pattern.match(target):
-                return True        
-        return False
+                return True
+        return (target in fpmatch.only_explicit_paths(self.targets))
     
     @property
     def func(self):
