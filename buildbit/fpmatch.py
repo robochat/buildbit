@@ -56,7 +56,7 @@ def precompile(pat):
     return re.compile(regex)
 
 
-
+#
 
 meta_check = re.compile('[*?%[]') 
 
