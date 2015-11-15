@@ -554,8 +554,8 @@ class PatternRule(MetaRule):
         assert all(fpmatch.has_pattern(target) for target in targets)
         #counting number of % (excluding sets)
         numpat = fpmatch.count_patterns
-        assert ( max([numpat(req) for req in reqs]+[numpat(req) for req in order_ony])
-                 <= min(numpat(target) for target in targets) 
+        assert ( max([numpat(req) for req in reqs]+[numpat(req) for req in order_only])
+                 <= min(numpat(target) for target in targets) )
     
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
