@@ -553,8 +553,9 @@ class PatternRule(MetaRule):
         #Check parameters - PatternRules shouldn't have any entries in self.explicit_rules
         assert all(fpmatch.has_pattern(target) for target in targets)
         #counting number of % (excluding sets)
-        #assert ( max([pattern_count(req) for req in reqs]+[pattern_count(req) for req in order_ony])
-        #         <= min(pattern_count(target) for target in targets) 
+        numpat = fpmatch.count_patterns
+        assert ( max([numpat(req) for req in reqs]+[numpat(req) for req in order_ony])
+                 <= min(numpat(target) for target in targets) 
     
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error

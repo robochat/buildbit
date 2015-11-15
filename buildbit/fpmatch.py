@@ -50,50 +50,12 @@ _fpmatch = imp.load_module('_fpmatch', *imp.find_module('fnmatch'))
 _fpmatch.translate = translate #monkey patch!
 from _fpmatch import *
 
-
-
 def precompile(pat):
     """pre-compile the glob pattern into a compiled regular expression"""
     regex = translate(os.path.normcase(pat))
     return re.compile(regex)
 
-def strip_specials(pat):
-    """Strip all the special characters from a pattern. This will be used to 
-    find the best match when there are multiple matching patterns.
-    """
-    i, n = 0, len(pat)
-    res = ''
-    while i < n:
-        c = pat[i]
-        i = i+1
-        if c == '*':
-            pass
-        elif c == '?':
-            pass
-        elif c == '%':
-            pass
-        elif c == '[':
-            j = i
-            if j+1 < n and pat[j+1] == ']' and pat[j] != '!': #special case to escape (a set with only one item)
-                res = res + pat[j]
-                i = i+2
-                continue
-            if j < n and pat[j] == '!':
-                j = j+1
-            if j < n and pat[j] == ']':
-                j = j+1
-            #corner cases:
-              #[] or [!] treated as literals if no later closing bracket found, 
-              #otherwise ']' is included in the set of choices.
-            while j < n and pat[j] != ']':
-                j = j+1
-            if j >= n:
-                res = res + '[' #another corner case for when no close bracket is found.
-            else:
-                i = j+1
-        else:
-            res += c
-    return res
+
 
 
 meta_check = re.compile('[*?%[]') 
@@ -134,16 +96,50 @@ def has_magic(s):
                 res = True
     return res
 
-def has_pattern(s):
-    """find if glob  has a rule pattern (%) wildcard.
+def strip_specials(pat):
+    """Strip all the special characters from a pattern. This will be used to 
+    find the best match when there are multiple matching patterns.
+    """
+    i, n = 0, len(pat)
+    res = ''
+    while i < n:
+        c = pat[i]
+        i = i+1
+        if c in ('*','?','%'):
+            pass
+        elif c == '[':
+            j = i
+            if j+1 < n and pat[j+1] == ']' and pat[j] != '!': #special case to escape (a set with only one item)
+                res = res + pat[j]
+                i = i+2
+                continue
+            if j < n and pat[j] == '!':
+                j = j+1
+            if j < n and pat[j] == ']':
+                j = j+1
+            #corner cases:
+              #[] or [!] treated as literals if no later closing bracket found, 
+              #otherwise ']' is included in the set of choices.
+            while j < n and pat[j] != ']':
+                j = j+1
+            if j >= n:
+                res = res + '[' #another corner case for when no close bracket is found.
+            else:
+                i = j+1
+        else:
+            res += c
+    return res
+
+def count_patterns(s):
+    """count number of pattern (%) wildcards in glob.
     """
     i, n = 0, len(s)
-    res = False
+    res = 0
     while i < n:
         c = s[i]
         i = i+1
         if c == '%':
-            res = True
+            res += 1
         elif c == '[':
             j = i
             while j < n and s[j] != ']':
@@ -154,6 +150,9 @@ def has_pattern(s):
                 i = j+1
     return res
 
+def has_pattern(s):
+    """find if glob contains a pattern (%) wildcard."""
+    return (count_patterns(s) != 0)
 
 def only_explicit_paths(seq):
     return [strip_specials(path) for path in seq if not has_magic(path)]
