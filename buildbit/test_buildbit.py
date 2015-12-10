@@ -118,18 +118,29 @@ class TestCleanBuilds(BaseTestBuilds):
             self.assertEqual(bseq,[tf.r0,tf.r1,tf.r4,tf.r2,rw1,tf.r7])
             
     def test_ManyRules(self):
-        tf =self.tf
+        tf = self.tf
         targets = [self.outpath+'A/foo{0}'.format(i) for i in range(10)]
         for target,trule in zip(targets,tf.r8): 
             bseq = bob.Rule.calc_build(target)
             self.assertEqual(bseq,[tf.r0,tf.r1,trule])
             bseq2 = trule.calc_build()
             self.assertEqual(bseq,bseq2)
-
-"""
+            
+    def test_wildcard_prereq(self):
+        tf = self.tf
+        target = self.outpath+'B/contentsA.txt'
+        bseq = bob.Rule.calc_build(target)
+        bseq2 = tf.r9.calc_build()
+        self.assertEqual(bseq,bseq2)
+        rw1 = tf.r11.explicit_rules[0]
+        self.assertEqual(set(bseq),set([tf.r0,tf.r1,tf.r2,tf.r3,tf.r4,tf.r6,tf.r7,rw1,tf.r9]+tf.r8))
         
     def test_phony(self):
-        
+        tf = self.tf
+        pass # a difficult one to test
+
+
+"""        
     def test_wildcard_target(self):
         
     def test_wildcard_target2(self):

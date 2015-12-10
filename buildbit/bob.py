@@ -25,8 +25,8 @@ warnings.filterwarnings(action='always')
 
 # Force warnings.warn() to omit the source code line in the message
 formatwarning_orig = warnings.formatwarning
-warnings.formatwarning = lambda message, category, filename, lineno, line=None: \
-    formatwarning_orig(message, category, os.path.basename(filename), lineno, line='')
+#warnings.formatwarning = lambda message, category, filename, lineno, line=None: \
+#    formatwarning_orig(message, category, os.path.basename(filename), lineno, line='')
 
 
 class BaseRule(object):
