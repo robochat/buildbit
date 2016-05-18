@@ -1,3 +1,8 @@
+"""A customised version of fnmatch optimised for the buildbit package.
+
+Copyright (C) 2015  Robert Steed
+"""
+
 import re
 import os.path
 import imp

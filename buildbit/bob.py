@@ -1,5 +1,8 @@
 #!/usr/bin/env python2
-"""a simple build system inspired by gnu make"""
+"""a simple build system inspired by gnu make
+
+Copyright (C) 2015  Robert Steed
+"""
 
 from orderedset import OrderedSet
 #import pathlib
