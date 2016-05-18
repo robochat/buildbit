@@ -1,3 +1,5 @@
+"""Some useful utility functions and decorators. Part of the Buildbit package.
+"""
 from collections import Iterable
 from types import StringTypes
 import functools
