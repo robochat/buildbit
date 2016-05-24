@@ -356,7 +356,7 @@ class MetaRule(BaseRule):
             match = matches[0]
         elif len(matches) > 1:
             # find longest matching pattern (explicit part only) using _pattern_rankings dict
-            i = argmax(self._pattern_rankings[regex] for regex in matches)
+            i = argmax([cls._pattern_rankings[regex] for regex in matches])
             match = matches[i]
         else:
             match = None
