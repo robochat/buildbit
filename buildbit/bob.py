@@ -335,6 +335,10 @@ class MetaRule(BaseRule):
     #_pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
     
     @classmethod
+    def reset_cache(cls):
+        raise NotImplementedError
+    
+    @classmethod
     def get(cls,target,default=None,extratargetpath=''):
         """get the best matched rule for the target from the registry of metarules
         target - target filepath string.
@@ -374,10 +378,10 @@ class MetaRule(BaseRule):
             passed this class instance when run in order to have access
             to its attributes.
         """
-        self.targets = checkseq(targets)
+        self.targets = targets = checkseq(targets)
         self.PHONY = PHONY
-        self.allreqs = checkseq(reqs)
-        self.order_only = checkseq(order_only)
+        self.allreqs = reqs = checkseq(reqs)
+        self.order_only = order_only = checkseq(order_only)
         
         self.explicit_rules = [] #each meta_rule remembers its explicit rules. 
         self._func = func
@@ -554,11 +558,11 @@ class PatternRule(MetaRule):
         with the highest number of them."""
         super(PatternRule,self).__init__(targets,reqs,order_only,func,PHONY)
         #Check parameters - PatternRules shouldn't have any entries in self.explicit_rules
-        assert all(fpmatch.has_pattern(target) for target in targets)
+        assert all(fpmatch.has_pattern(target) for target in self.targets)
         #counting number of % (excluding sets)
         numpat = fpmatch.count_patterns
-        assert ( max([numpat(req) for req in reqs]+[numpat(req) for req in order_only])
-                 <= min(numpat(target) for target in targets) )
+        assert ( max([numpat(req) for req in self.allreqs]+[numpat(req) for req in self.order_only])
+                 <= min(numpat(target) for target in self.targets) )
     
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
