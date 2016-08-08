@@ -421,6 +421,125 @@ class MetaRule(BaseRule):
             explicit_rule.func = newfunc
 
 
+## rules for which those with multiple targets are shorthand for multiple individual rules.
+##-----------------------------------------------------------------------------------------
+
+class WildRule(MetaRule):
+    """A meta rule that can specialise to an explicit rule. It takes wildcards and
+    in the target and req lists. Multiple targets lead to individualised explicit 
+    rules."""
+    rules = {} # compiled regular expression of target: meta_rule
+    _instantiated_rules = {} # cache of instantiated explicit rules
+    _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
+    
+    @classmethod
+    def reset_cache(cls):
+        cls._instantiated_rules = {}
+    
+    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
+        """targets - list of targets
+        reqs - seq of prerequisites
+        order_only - seq of order only prerequisites
+        func - a function that should take one or no arguments. Will be
+            passed this class instance when run in order to have access
+            to its attributes.
+        """
+        super(WildRule,self).__init__(targets,reqs,order_only,func,PHONY)
+        #Check parameters
+        pass
+        
+        #Some of the targets may be explicit, in which case we can just directly create ExplicitRules as normal
+        explicit_targets = fpmatch.only_explicit_paths(targets)
+        #saving references to explicit rules to allow us to have late-binding of the build func
+        self.explicit_rules = [
+            ExplicitTargetRule(targets=target,reqs=reqs,order_only=order_only,func=self.func,PHONY=self.PHONY)
+            for target in explicit_targets]
+    
+    def individuate(self,target,regex):
+        """creates an explicit rule for the target. Will raise an error
+        if the target is incompatible with the metarule"""
+        #check target
+        
+        #expanding wildcards in reqs        
+        newrule = ExplicitTargetRule(targets=target,reqs=self.allreqs,order_only=self.order_only,
+                                func=self.func,PHONY=self.PHONY,register=False)
+        #we set register to false as we do not want this rule to be added to the
+        #ExplicitRule registry as that would make the build order dependent.
+        return newrule
+
+
+
+class PatternRule(MetaRule):
+    """A meta rule that can specialise to an explicit rule. It takes wildcards and
+    patterns in the target and req lists. Multiple targets lead to individualised
+    explicit rules.
+    """
+    rules = {}
+    _instantiated_rules = {} # cache of instantiated explicit rules
+    _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
+
+    @classmethod
+    def reset_cache(cls):
+        cls._instantiated_rules = {}
+        
+    @classmethod
+    def get(cls,target,default=None):
+        """get the best matched rule for the target from the registry of pattern rules
+        """
+        newrule = super(PatternRule,cls).get(target,None)
+        if newrule is None: 
+            #then do a final search of pattern rules with target's directory path removed
+            targetname = os.path.basename(target)
+            targetpath = os.path.dirname(target)
+            newrule = super(PatternRule,cls).get(targetname,default,extratargetpath=targetpath)
+        return newrule
+
+
+    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
+        """Note: All targets must have at least the same number of % wildcards as the prerequisite
+        with the highest number of them."""
+        super(PatternRule,self).__init__(targets,reqs,order_only,func,PHONY)
+        #Check parameters - PatternRules shouldn't have any entries in self.explicit_rules
+        assert all(fpmatch.has_pattern(target) for target in self.targets)
+        #counting number of % (excluding sets)
+        numpat = fpmatch.count_patterns
+        assert ( max([numpat(req) for req in self.allreqs]+[numpat(req) for req in self.order_only])
+                 <= min(numpat(target) for target in self.targets) )
+    
+    def individuate(self,target,regex):
+        """creates an explicit rule for the target. Will raise an error
+        if the target is incompatible with the metarule"""
+        #check regex
+        assert regex in self.re_targets                
+        #inplace pattern substitution
+        def subst_patterns(s,patterns):
+            for pattern in patterns:
+                s=s.replace('%',pattern,1)
+            return s
+        #pattern matching, finding best match
+        res =regex.match(target)
+        if res:
+            stems = res.groups()
+            ireqs = [subst_patterns(req,stems) for req in self.allreqs]
+            iorder_only = [subst_patterns(req,stems) for req in self.order_only]
+        else: #try matching by basename
+            res = regex.match(os.path.basename(target))
+            if not res:
+                raise AssertionError("target doesn't match rule pattern")
+            targetpath = os.path.dirname(target)
+            stems = res.groups()
+            ireqs = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.allreqs]
+            iorder_only = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.order_only]
+        
+        newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
+                                func=self.func,PHONY=self.PHONY,register=False)
+        #we set register to false as we do not want this rule to be added to the
+        #ExplicitRule registry as that would make the build order dependent.
+        newrule.stems = stems #useful attribute
+        return newrule
+
+
+
 ## rules where those with multiple targets are still only run once.
 ##------------------------------------------------------------------------------
 
@@ -574,122 +693,6 @@ class PatternSharedRule(MetaRule):
             erule._extratargetpath = extratargetpath #internal tag for finding matching instantiated pattern rules.
             self.explicit_rules.append(erule)
         return erule
-
-## rules for which those with multiple targets are shorthand for multiple individual rules.
-##-----------------------------------------------------------------------------------------
-
-class WildRule(MetaRule):
-    """A meta rule that can specialise to an explicit rule. It takes wildcards and
-    in the target and req lists. Multiple targets lead to individualised explicit 
-    rules."""
-    rules = {} # compiled regular expression of target: meta_rule
-    _instantiated_rules = {} # cache of instantiated explicit rules
-    _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
-    
-    @classmethod
-    def reset_cache(cls):
-        cls._instantiated_rules = {}
-    
-    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
-        """targets - list of targets
-        reqs - seq of prerequisites
-        order_only - seq of order only prerequisites
-        func - a function that should take one or no arguments. Will be
-            passed this class instance when run in order to have access
-            to its attributes.
-        """
-        super(WildRule,self).__init__(targets,reqs,order_only,func,PHONY)
-        #Check parameters
-        pass
-        
-        #Some of the targets may be explicit, in which case we can just directly create ExplicitRules as normal
-        explicit_targets = fpmatch.only_explicit_paths(targets)
-        #saving references to explicit rules to allow us to have late-binding of the build func
-        self.explicit_rules = [
-            ExplicitTargetRule(targets=target,reqs=reqs,order_only=order_only,func=self.func,PHONY=self.PHONY)
-            for target in explicit_targets]
-    
-    def individuate(self,target,regex):
-        """creates an explicit rule for the target. Will raise an error
-        if the target is incompatible with the metarule"""
-        #check target
-        
-        #expanding wildcards in reqs        
-        newrule = ExplicitTargetRule(targets=target,reqs=self.allreqs,order_only=self.order_only,
-                                func=self.func,PHONY=self.PHONY,register=False)
-        #we set register to false as we do not want this rule to be added to the
-        #ExplicitRule registry as that would make the build order dependent.
-        return newrule
-
-
-class PatternRule(MetaRule):
-    """A meta rule that can specialise to an explicit rule. It takes wildcards and
-    patterns in the target and req lists. Multiple targets lead to individualised
-    explicit rules.
-    """
-    rules = {}
-    _instantiated_rules = {} # cache of instantiated explicit rules
-    _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
-
-    @classmethod
-    def reset_cache(cls):
-        cls._instantiated_rules = {}
-        
-    @classmethod
-    def get(cls,target,default=None):
-        """get the best matched rule for the target from the registry of pattern rules
-        """
-        newrule = super(PatternRule,cls).get(target,None)
-        if newrule is None: 
-            #then do a final search of pattern rules with target's directory path removed
-            targetname = os.path.basename(target)
-            targetpath = os.path.dirname(target)
-            newrule = super(PatternRule,cls).get(targetname,default,extratargetpath=targetpath)
-        return newrule
-
-
-    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
-        """Note: All targets must have at least the same number of % wildcards as the prerequisite
-        with the highest number of them."""
-        super(PatternRule,self).__init__(targets,reqs,order_only,func,PHONY)
-        #Check parameters - PatternRules shouldn't have any entries in self.explicit_rules
-        assert all(fpmatch.has_pattern(target) for target in self.targets)
-        #counting number of % (excluding sets)
-        numpat = fpmatch.count_patterns
-        assert ( max([numpat(req) for req in self.allreqs]+[numpat(req) for req in self.order_only])
-                 <= min(numpat(target) for target in self.targets) )
-    
-    def individuate(self,target,regex):
-        """creates an explicit rule for the target. Will raise an error
-        if the target is incompatible with the metarule"""
-        #check regex
-        assert regex in self.re_targets                
-        #inplace pattern substitution
-        def subst_patterns(s,patterns):
-            for pattern in patterns:
-                s=s.replace('%',pattern,1)
-            return s
-        #pattern matching, finding best match
-        res =regex.match(target)
-        if res:
-            stems = res.groups()
-            ireqs = [subst_patterns(req,stems) for req in self.allreqs]
-            iorder_only = [subst_patterns(req,stems) for req in self.order_only]
-        else: #try matching by basename
-            res = regex.match(os.path.basename(target))
-            if not res:
-                raise AssertionError("target doesn't match rule pattern")
-            targetpath = os.path.dirname(target)
-            stems = res.groups()
-            ireqs = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.allreqs]
-            iorder_only = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.order_only]
-        
-        newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
-                                func=self.func,PHONY=self.PHONY,register=False)
-        #we set register to false as we do not want this rule to be added to the
-        #ExplicitRule registry as that would make the build order dependent.
-        newrule.stems = stems #useful attribute
-        return newrule
 
 
 ## build system user interface
