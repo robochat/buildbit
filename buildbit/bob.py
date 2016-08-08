@@ -522,20 +522,22 @@ class PatternRule(MetaRule):
             stems = res.groups()
             ireqs = [subst_patterns(req,stems) for req in self.allreqs]
             iorder_only = [subst_patterns(req,stems) for req in self.order_only]
+            extratargetpath = None
         else: #try matching by basename
             res = regex.match(os.path.basename(target))
             if not res:
                 raise AssertionError("target doesn't match rule pattern")
-            targetpath = os.path.dirname(target)
+            extratargetpath = os.path.dirname(target) #path prefix to pattern rule's target
             stems = res.groups()
-            ireqs = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.allreqs]
-            iorder_only = [os.path.join(targetpath,subst_patterns(req,stems)) for req in self.order_only]
+            ireqs = [os.path.join(extratargetpath,subst_patterns(req,stems)) for req in self.allreqs]
+            iorder_only = [os.path.join(extratargetpath,subst_patterns(req,stems)) for req in self.order_only]
         
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
                                 func=self.func,PHONY=self.PHONY,register=False)
         #we set register to false as we do not want this rule to be added to the
         #ExplicitRule registry as that would make the build order dependent.
         newrule.stems = stems #useful attribute
+        erule._extratargetpath = extratargetpath #internal attribute (unused currently).
         return newrule
 
 
