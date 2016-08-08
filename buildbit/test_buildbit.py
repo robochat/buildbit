@@ -182,3 +182,6 @@ class TestReBuilds(TestBuilds):
 
         
 """
+
+if __name__ == '__main__':
+    unittest.main()
