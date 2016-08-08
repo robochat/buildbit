@@ -609,6 +609,7 @@ class WildSharedRule(MetaRule):
         return erule
 
 
+
 class PatternSharedRule(PatternRule):
     """A meta rule that can specialise to an explicit rule. It takes wildcards and
     patterns in the target and req lists. Multiple targets lead to shared explicit
@@ -629,6 +630,9 @@ class PatternSharedRule(PatternRule):
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
 
+    @classmethod
+    def reset_cache(cls):
+        cls._instantiated_rules = {}
 
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
