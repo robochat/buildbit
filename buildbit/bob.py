@@ -545,7 +545,7 @@ class PatternRule(MetaRule):
         #we set register to false as we do not want this rule to be added to the
         #ExplicitRule registry as that would make the build order dependent.
         newrule.stems = stems #useful attribute
-        erule._extratargetpath = extratargetpath #internal attribute (unused currently).
+        newrule._extratargetpath = extratargetpath #internal attribute (unused currently).
         return newrule
 
 
