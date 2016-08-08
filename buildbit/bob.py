@@ -506,7 +506,7 @@ class PatternRule(MetaRule):
         assert ( max([numpat(req) for req in self.allreqs]+[numpat(req) for req in self.order_only])
                  <= min(numpat(target) for target in self.targets) )
     
-    def individuate(self,target,regex):
+    def _individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
         if the target is incompatible with the metarule"""
         #check regex
@@ -531,6 +531,14 @@ class PatternRule(MetaRule):
             stems = res.groups()
             ireqs = [os.path.join(extratargetpath,subst_patterns(req,stems)) for req in self.allreqs]
             iorder_only = [os.path.join(extratargetpath,subst_patterns(req,stems)) for req in self.order_only]
+            
+        return stems, extratargetpath, target, ireqs, iorder_only
+        
+    def individuate(self,target,regex):
+        """creates an explicit rule for the target. Will raise an error
+        if the target is incompatible with the metarule"""
+        
+        stems, extratargetpath, target, ireqs, iorder_only = self._individuate(target,regex)
         
         newrule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
                                 func=self.func,PHONY=self.PHONY,register=False)
