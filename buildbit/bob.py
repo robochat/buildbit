@@ -609,7 +609,7 @@ class WildSharedRule(MetaRule):
         return erule
 
 
-class PatternSharedRule(MetaRule):
+class PatternSharedRule(PatternRule):
     """A meta rule that can specialise to an explicit rule. It takes wildcards and
     patterns in the target and req lists. Multiple targets lead to shared explicit
     rules.
@@ -629,61 +629,11 @@ class PatternSharedRule(MetaRule):
     _instantiated_rules = {} # cache of instantiated explicit rules
     _pattern_rankings = {} # registry of the 'lengths' of the wildcard targets.
 
-    @classmethod
-    def reset_cache(cls):
-        cls._instantiated_rules = {}
-        
-    @classmethod
-    def get(cls,target,default=None):
-        """get the best matched rule for the target from the registry of pattern rules
-        """
-        newrule = super(PatternSharedRule,cls).get(target,None)
-        if newrule is None: 
-            #then do a final search of pattern rules with target's directory path removed
-            targetname = os.path.basename(target)
-            targetpath = os.path.dirname(target)
-            newrule = super(PatternSharedRule,cls).get(targetname,default,extratargetpath=targetpath)
-        return newrule
 
-    def __init__(self,targets,reqs,order_only=None,func=None,PHONY=False):
-        """Note: All targets must have at least the same number of % wildcards as the prerequisite
-        with the highest number of them."""
-        super(PatternSharedRule,self).__init__(targets,reqs,order_only,func,PHONY)
-        #Check parameters - PatternRules shouldn't have any entries in self.explicit_rules
-        assert all(fpmatch.has_pattern(target) for target in self.targets)
-        #counting number of % (excluding sets)
-        numpat = fpmatch.count_patterns
-        assert ( max([numpat(req) for req in self.allreqs]+[numpat(req) for req in self.order_only])
-                 <= min(numpat(target) for target in self.targets) )
-        #check that all targets have the same number of pattern wildcards
-        num0 = numpat(self.targets[0]) #must be at least one target
-        assert all(numpat(target) == num0 for target in self.targets)
-    
     def individuate(self,target,regex):
         """creates an explicit rule for the target. Will raise an error
         if the target is incompatible with the metarule"""
-        #check regex
-        assert regex in self.re_targets                
-        #inplace pattern substitution
-        def subst_patterns(s,patterns):
-            for pattern in patterns:
-                s=s.replace('%',pattern,1)
-            return s
-        #pattern matching, finding best match
-        res =regex.match(target)
-        if res:
-            stems = res.groups()
-            ireqs = [subst_patterns(req,stems) for req in self.allreqs]
-            iorder_only = [subst_patterns(req,stems) for req in self.order_only]
-            extratargetpath = None
-        else: #try matching by basename
-            res = regex.match(os.path.basename(target))
-            if not res:
-                raise AssertionError("target doesn't match rule pattern")
-            extratargetpath = os.path.dirname(target) #path prefix to pattern rule's target
-            stems = res.groups()
-            ireqs = [os.path.join(extratargetpath,subst_patterns(req,stems)) for req in self.allreqs]
-            iorder_only = [os.path.join(extratargetpath,subst_patterns(req,stems)) for req in self.order_only]
+        stems, extratargetpath, target, ireqs, iorder_only = self._individuate(target,regex)
         
         #search instantiated rules for this pattern rule for one with matching stems and basename
         erules = [rule for rule in self.explicit_rules if rule.stems == stems and rule._extratargetpath == extratargetpath]        
