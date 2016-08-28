@@ -44,9 +44,10 @@ rule attributes in a similar manner i.e.
 of the rule instances).
 
 The targets, reqs and order_only parameters of Rule will accept sequences or simple strings
-of file paths. These can also contain wildcards conforming to the format used by the 
-python standard libraries fnmatch or glob where metacharacters are `[][!]*?`. In addition
-the wildcard character '`%`' can be used as in gmake to create pattern rules.
+of file paths. These can also contain wildcards conforming to the format used by the python
+standard libraries fnmatch or glob where metacharacters are `[][!]*?`. This means that 
+wildcards will only match items within each given directory level. In addition the wildcard
+character '`%`' can be used as in gmake to create pattern rules.
 
 The system calculated build sequence should be independent of the order of the rules and
 the order of their prerequisites in order to avoid surprising behaviour. For this reason
@@ -90,16 +91,16 @@ if False: #__name__=="__main__":
         rule.build(buildseq)
 ```
 
-There are some differences from GNU make. In buildbit, we can explicitly decide whether
-we want rules to be shared between targets or not in order to have more efficient builds.
-Wildcard prerequisites will search the rules with explicitly defined targets for any
-matches as well as the filesystem. Also, pattern rules are not currently shared across
-their targets unlike in gmake.
+There are some differences from GNU make. 
+* In buildbit, we can explicitly decide whether we want rules to be shared between targets
+  or not in order to have more efficient builds.
+* Wildcard prerequisites will search the rules with explicitly defined targets for any
+  matches as well as the filesystem.
+* Pattern rules are not shared across their targets unless it is requested.
 
 
 To Do
 ------
 
-Add class for shared pattern rules
-write unit tests
-create dependency graphs (using graphviz)
+* write unit tests
+* create dependency graphs (using graphviz)
