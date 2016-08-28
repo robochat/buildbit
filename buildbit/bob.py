@@ -522,7 +522,7 @@ class PatternRule(MetaRule):
             stems = res.groups()
             ireqs = [subst_patterns(req,stems) for req in self.allreqs]
             iorder_only = [subst_patterns(req,stems) for req in self.order_only]
-            extratargetpath = None
+            extratargetpath = ""
         else: #try matching by basename
             res = regex.match(os.path.basename(target))
             if not res:
@@ -545,7 +545,7 @@ class PatternRule(MetaRule):
         #we set register to false as we do not want this rule to be added to the
         #ExplicitRule registry as that would make the build order dependent.
         newrule.stems = stems #useful attribute
-        newrule._extratargetpath = extratargetpath #internal attribute (unused currently).
+        newrule.extratargetpath = extratargetpath #useful attribute
         return newrule
 
 
@@ -640,7 +640,7 @@ class PatternSharedRule(PatternRule):
         stems, extratargetpath, target, ireqs, iorder_only = self._individuate(target,regex)
         
         #search instantiated rules for this pattern rule for one with matching stems and basename
-        erules = [rule for rule in self.explicit_rules if rule.stems == stems and rule._extratargetpath == extratargetpath]        
+        erules = [rule for rule in self.explicit_rules if rule.stems == stems and rule.extratargetpath == extratargetpath]        
         if len(erules) > 1: 
             raise AssertionError("PatternRule instance's explicit_rule list is corrupted by duplicates")
         if erules:
@@ -654,7 +654,7 @@ class PatternSharedRule(PatternRule):
             #we set register to false as we do not want this rule to be added to the
             #ExplicitRule registry as that would make the build order dependent.
             erule.stems = stems #useful attribute & necessary for finding already instantiated rules.
-            erule._extratargetpath = extratargetpath #internal tag for finding matching instantiated pattern rules.
+            erule.extratargetpath = extratargetpath #useful attribute & necessary for finding matching instantiated pattern rules.
             self.explicit_rules.append(erule)
         return erule
 
