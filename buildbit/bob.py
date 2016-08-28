@@ -774,7 +774,8 @@ class Rule(BaseRule):
                     newrule = ExplicitRule(targets,reqs,order_only,func,PHONY)
                 else:
                     newrule = ExplicitTargetRule(targets,reqs,order_only,func,PHONY)
-            elif fpmatch.has_pattern(targets):
+            elif any(fpmatch.has_pattern(target) for target in targets):
+                #in fact all targets should have a pattern wildcard but error checking will occur in class.
                 newrule = PatternSharedRule(targets,reqs,order_only,func,PHONY)
             else: #wildcard targets
                 newrule = WildSharedRule(targets,reqs,order_only,func,PHONY)
