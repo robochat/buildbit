@@ -597,7 +597,7 @@ class WildSharedRule(MetaRule):
         
         #Adding new target to explicit rule's target attribute.
         erule = self.explicit_rules[0]
-        erule.targets = dedup(erule.targets + [target])
+        erule.targets = dedup(list(erule.targets) + [target])
         
         #Nb. This requested target isn't added to the ExplicitRule rule registry since 
         # that would make the build calculation order dependent/non-deterministic. 
@@ -646,7 +646,7 @@ class PatternSharedRule(PatternRule):
         if erules:
             erule = erules[0]
             #Adding new target to explicit rule's target attribute.
-            erule.targets = dedup(erule.targets + [target])
+            erule.targets = dedup(list(erule.targets) + [target])
             #note that mutating erule's attribute doesn't change object's hash (see WildSharedRule comments)
         else:
             erule = ExplicitTargetRule(targets=target,reqs=ireqs,order_only=iorder_only,
